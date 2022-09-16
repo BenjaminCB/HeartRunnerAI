@@ -1,9 +1,5 @@
 intersection_a,intersection_b,length,difficulty
 1,2,5,1
-2,1,5,1
 1,5,10,3
-5,1,10,3
 2,3,7,2
-3,2,7,2
 5,3,5,2
-3,5,5,2
