@@ -1,5 +1,6 @@
 # Meting 20/09-2022
-Most important is the total number of assigned task (cardiac arrests), than workers (runners)
+More important is the total number of assigned task (cardiac arrests), than workers (runners)
+- For this project we prioritize the time for workers to get to the task
 
 first thing: Prepare data
 
