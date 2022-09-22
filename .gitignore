@@ -1,7 +1,6 @@
 venv
 .requirements.txt
 .env
-json_scripts/*.json
 
 #Macbook shit
 **/.DS_STORE
