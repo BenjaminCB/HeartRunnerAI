@@ -4,12 +4,15 @@ import csv
 from geojson_length import calculate_distance, Unit
 
 
-GEOJSON_PATH = "./geojson/streetsegments.geojson"
+STREETS_GEOJSON_PATH = "./geojson/streetsegments.geojson"
+AEDS_GEOJSON_PATH = "./geojson/aeds.geojson"
 STREETS_PATH = "./csv/streetsegments.csv"
+AEDS_PATH = "./csv/aeds.csv"
 INTERS_PATH = "./csv/intersections.csv"
 STREETS_HEADER = ["ID", "HEAD_INTERSECTION_ID",
                   "TAIL_INTERSECTION_ID", "LENGTH"]
 INTERS_HEADER = ["ID", "X_COORD", "Y_COORD"]
+AEDS_HEADER = ["ID", "X_COORD", "Y_COORD"]
 
 
 class Intersection:
@@ -17,8 +20,7 @@ class Intersection:
 
     def __init__(self, coord):
         self.id = next(self.id_iter)
-        self.xcoord = coord[0]
-        self.ycoord = coord[1]
+        self.xcoord, self.ycoord = coord
         self.csv = [self.id, self.xcoord, self.ycoord]
 
 
@@ -30,6 +32,13 @@ class StreetSegment:
         self.length = length
         self.csv = [self.id, self.head_intersection_id,
                     self.tail_intersection_id, self.length]
+
+
+class Aed:
+    def __init__(self, id, coord):
+        self.id = id
+        self.xcoord, self.ycoord = coord
+        self.csv = [self.id, self.xcoord, self.ycoord]
 
 
 def filter(feature):
@@ -45,23 +54,24 @@ def filter(feature):
 
 
 with (
-    open(GEOJSON_PATH, "r") as geojson_file,
+    open(STREETS_GEOJSON_PATH, "r") as streets_geojson_file,
+    open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
     open(STREETS_PATH, "w+", encoding='UTF8', newline='') as streets_file,
-    open(INTERS_PATH, "w+", encoding='UTF"', newline='') as inters_file
+    open(INTERS_PATH, "w+", encoding='UTF8', newline='') as inters_file,
+    open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file
 ):
     inters = {}
     streets_writer = csv.writer(streets_file)
     inters_writer = csv.writer(inters_file)
+    aeds_writer = csv.writer(aeds_file)
 
     streets_writer.writerow(STREETS_HEADER)
     inters_writer.writerow(INTERS_HEADER)
+    aeds_writer.writerow(AEDS_HEADER)
 
-    n = 1
-    features = geojson.load(geojson_file)["features"]
-    for feature in features:
-        print(n/len(features)*100)
-        n += 1
-
+    print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets")
+    street_features = geojson.load(streets_geojson_file)["features"]
+    for feature in street_features:
         # Filter unwanted features.
         if filter(feature):
             continue
@@ -86,3 +96,12 @@ with (
 
         streets_writer.writerow(StreetSegment(
             id, inters[first_coord].id, inters[last_coord].id, length).csv)
+    print(f"DONE!")
+
+    print(f"Generating {AEDS_PATH} dataset")
+    aed_features = geojson.load(aeds_geojson_file)["features"]
+    for feature in aed_features:
+        id = feature["properties"]["OBJECTID"]
+        coords = feature["geometry"]["coordinates"]
+        aeds_writer.writerow(Aed(id, coords).csv)
+    print(f"DONE!")
