@@ -16,6 +16,9 @@ INTERS_HEADER = ["ID", "X_COORD", "Y_COORD"]
 AEDS_HEADER = ["ID", "X_COORD", "Y_COORD"]
 AED_LOCATIONS_HEADER = ["AED_ID", "INTERSECTION_ID"]
 
+def coord_dist(coord_a, coord_b):
+    return calculate_distance(geojson.LineString([coord_a, coord_b], Unit.meters))
+
 
 class Intersection:
     id_iter = itertools.count(1)
@@ -24,6 +27,40 @@ class Intersection:
         self.id = next(self.id_iter)
         self.xcoord, self.ycoord = coord
         self.csv = [self.id, self.xcoord, self.ycoord]
+
+
+class IntersectionDict:
+    def __init__(self)
+        self.dict = {}
+
+    def set(coord, value):
+        self.dict[coord] = value
+
+    def get(coord):
+        return self.dict[coord]
+
+    def getFromMaxDist(coord, max_dist):
+        for k in self.dict.keys():
+            if coord_dist(k, coord) < max_dist:
+                return self.dict[k]
+
+        self.set(coord, Intersection(coord))
+        return self.dict[coord]
+
+    def getClosest(coord):
+        if not len(self.dict):
+            self.set(coord, Intersection(coord))
+            return self.dict[coord]
+
+        res = list(self.dict.values())[0]
+        min = coord_dist(res, coord)
+
+        for k in self.dict.keys():
+            dist = coord_dist(k, coord)
+            if dist < min:
+                res = self.dict[k]
+
+        return res
 
 
 class StreetSegment:
@@ -125,3 +162,4 @@ with (
         aed_locations_writer.writerow(AedLocation(id, inters[coords].id).csv)
 
     print(f"DONE!")
+    print(len(inters))
