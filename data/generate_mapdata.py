@@ -9,10 +9,12 @@ AEDS_GEOJSON_PATH = "./geojson/aeds.geojson"
 STREETS_PATH = "./csv/streetsegments.csv"
 AEDS_PATH = "./csv/aeds.csv"
 INTERS_PATH = "./csv/intersections.csv"
+AED_LOCATIONS_PATH = "./csv/aed_locations.csv"
 STREETS_HEADER = ["ID", "HEAD_INTERSECTION_ID",
                   "TAIL_INTERSECTION_ID", "LENGTH"]
 INTERS_HEADER = ["ID", "X_COORD", "Y_COORD"]
 AEDS_HEADER = ["ID", "X_COORD", "Y_COORD"]
+AED_LOCATIONS_HEADER = ["AED_ID", "INTERSECTION_ID"]
 
 
 class Intersection:
@@ -41,6 +43,13 @@ class Aed:
         self.csv = [self.id, self.xcoord, self.ycoord]
 
 
+class AedLocation:
+    def __init__(self, aed_id, intersection_id):
+        self.aed_id = aed_id
+        self.intersection_id = intersection_id
+        self.csv = [self.aed_id, self.intersection_id]
+
+
 def filter(feature):
     properties = feature["properties"]
     geometry = feature["geometry"]
@@ -58,16 +67,19 @@ with (
     open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
     open(STREETS_PATH, "w+", encoding='UTF8', newline='') as streets_file,
     open(INTERS_PATH, "w+", encoding='UTF8', newline='') as inters_file,
-    open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file
+    open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file,
+    open(AED_LOCATIONS_PATH, "w+", encoding='UTF8', newline='') as aed_locations_file
 ):
     inters = {}
     streets_writer = csv.writer(streets_file)
     inters_writer = csv.writer(inters_file)
     aeds_writer = csv.writer(aeds_file)
+    aed_locations_writer = csv.writer(aed_locations_file)
 
     streets_writer.writerow(STREETS_HEADER)
     inters_writer.writerow(INTERS_HEADER)
     aeds_writer.writerow(AEDS_HEADER)
+    aed_locations_writer.writerow(AED_LOCATIONS_HEADER)
 
     print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets")
     street_features = geojson.load(streets_geojson_file)["features"]
@@ -96,12 +108,20 @@ with (
 
         streets_writer.writerow(StreetSegment(
             id, inters[first_coord].id, inters[last_coord].id, length).csv)
+
     print(f"DONE!")
 
-    print(f"Generating {AEDS_PATH} dataset")
+    print(f"Generating {AEDS_PATH} and {AED_LOCATIONS_PATH} dataset")
     aed_features = geojson.load(aeds_geojson_file)["features"]
     for feature in aed_features:
         id = feature["properties"]["OBJECTID"]
-        coords = feature["geometry"]["coordinates"]
+        coords = tuple(feature["geometry"]["coordinates"])
         aeds_writer.writerow(Aed(id, coords).csv)
+
+        if coords not in inters:
+            inters[coords] = Intersection(coords)
+            inters_writer.writerow(inters[coords].csv)
+
+        aed_locations_writer.writerow(AedLocation(id, inters[coords].id).csv)
+
     print(f"DONE!")
