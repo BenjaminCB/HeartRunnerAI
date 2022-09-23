@@ -1,6 +1,8 @@
 import geojson
 import itertools
 import csv
+from random import randint
+from geopy import distance
 from geojson_length import calculate_distance, Unit
 
 
@@ -9,15 +11,10 @@ AEDS_GEOJSON_PATH = "./geojson/aeds.geojson"
 STREETS_PATH = "./csv/streetsegments.csv"
 AEDS_PATH = "./csv/aeds.csv"
 INTERS_PATH = "./csv/intersections.csv"
-AED_LOCATIONS_PATH = "./csv/aed_locations.csv"
 STREETS_HEADER = ["ID", "HEAD_INTERSECTION_ID",
                   "TAIL_INTERSECTION_ID", "LENGTH"]
 INTERS_HEADER = ["ID", "X_COORD", "Y_COORD"]
-AEDS_HEADER = ["ID", "X_COORD", "Y_COORD"]
-AED_LOCATIONS_HEADER = ["AED_ID", "INTERSECTION_ID"]
-
-def coord_dist(coord_a, coord_b):
-    return calculate_distance(geojson.LineString([coord_a, coord_b], Unit.meters))
+AEDS_HEADER = ["ID", "INTERSECTION_ID", "IN_USE", "OPEN_HOUR", "CLOSE_HOUR"]
 
 
 class Intersection:
@@ -27,40 +24,6 @@ class Intersection:
         self.id = next(self.id_iter)
         self.xcoord, self.ycoord = coord
         self.csv = [self.id, self.xcoord, self.ycoord]
-
-
-class IntersectionDict:
-    def __init__(self)
-        self.dict = {}
-
-    def set(coord, value):
-        self.dict[coord] = value
-
-    def get(coord):
-        return self.dict[coord]
-
-    def getFromMaxDist(coord, max_dist):
-        for k in self.dict.keys():
-            if coord_dist(k, coord) < max_dist:
-                return self.dict[k]
-
-        self.set(coord, Intersection(coord))
-        return self.dict[coord]
-
-    def getClosest(coord):
-        if not len(self.dict):
-            self.set(coord, Intersection(coord))
-            return self.dict[coord]
-
-        res = list(self.dict.values())[0]
-        min = coord_dist(res, coord)
-
-        for k in self.dict.keys():
-            dist = coord_dist(k, coord)
-            if dist < min:
-                res = self.dict[k]
-
-        return res
 
 
 class StreetSegment:
@@ -74,17 +37,11 @@ class StreetSegment:
 
 
 class Aed:
-    def __init__(self, id, coord):
+    def __init__(self, id, intersection_id, time_range):
         self.id = id
-        self.xcoord, self.ycoord = coord
-        self.csv = [self.id, self.xcoord, self.ycoord]
-
-
-class AedLocation:
-    def __init__(self, aed_id, intersection_id):
-        self.aed_id = aed_id
+        self.start_hour, self.close_hour = time_range
         self.intersection_id = intersection_id
-        self.csv = [self.aed_id, self.intersection_id]
+        self.csv = [self.id, self.intersection_id, False, self.start_hour, self.close_hour]
 
 
 def filter(feature):
@@ -98,29 +55,27 @@ def filter(feature):
         return True
     return False
 
-
 with (
     open(STREETS_GEOJSON_PATH, "r") as streets_geojson_file,
     open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
     open(STREETS_PATH, "w+", encoding='UTF8', newline='') as streets_file,
     open(INTERS_PATH, "w+", encoding='UTF8', newline='') as inters_file,
-    open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file,
-    open(AED_LOCATIONS_PATH, "w+", encoding='UTF8', newline='') as aed_locations_file
+    open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file
 ):
     inters = {}
     streets_writer = csv.writer(streets_file)
     inters_writer = csv.writer(inters_file)
     aeds_writer = csv.writer(aeds_file)
-    aed_locations_writer = csv.writer(aed_locations_file)
 
     streets_writer.writerow(STREETS_HEADER)
     inters_writer.writerow(INTERS_HEADER)
     aeds_writer.writerow(AEDS_HEADER)
-    aed_locations_writer.writerow(AED_LOCATIONS_HEADER)
 
-    print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets")
     street_features = geojson.load(streets_geojson_file)["features"]
+    n = 1
     for feature in street_features:
+        print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets: {n/len(street_features)*100}%")
+        n += 1
         # Filter unwanted features.
         if filter(feature):
             continue
@@ -131,9 +86,9 @@ with (
 
         # Check if an intersection exists for the first and last coordinate of the
         # streetsegment, if not create a new intersection at those coordinates.
-        coords = list(geojson.coords(feature))
-        first_coord = coords[0]
-        last_coord = coords[-1]
+        aed_coords = list(geojson.coords(feature))
+        first_coord = aed_coords[0]
+        last_coord = aed_coords[-1]
         if first_coord == last_coord:
             continue
         if first_coord not in inters:
@@ -146,20 +101,31 @@ with (
         streets_writer.writerow(StreetSegment(
             id, inters[first_coord].id, inters[last_coord].id, length).csv)
 
-    print(f"DONE!")
-
-    print(f"Generating {AEDS_PATH} and {AED_LOCATIONS_PATH} dataset")
     aed_features = geojson.load(aeds_geojson_file)["features"]
+    n = 1
     for feature in aed_features:
+        print(f"Generating {AEDS_PATH} dataset: {n/len(aed_features)*100}%")
+        n += 1
         id = feature["properties"]["OBJECTID"]
-        coords = tuple(feature["geometry"]["coordinates"])
-        aeds_writer.writerow(Aed(id, coords).csv)
+        aed_coords = tuple(feature["geometry"]["coordinates"])
+        # TODO: Find closest intersection
+        if aed_coords not in inters:
+            shortest = 1e6
+            for inter_coords in inters.keys():
+                diff = distance.distance(aed_coords, inter_coords)
+                if diff < shortest:
+                    shortest = diff
+                    closest_inter = inters[inter_coords]
+        else:
+            closest_inter = inters[aed_coords]
 
-        if coords not in inters:
-            inters[coords] = Intersection(coords)
-            inters_writer.writerow(inters[coords].csv)
+        random = randint(1, 100)
+        if random < 40:     time_range = (0, 2359)
+        elif random < 70:   time_range = (900, 1700)
+        elif random < 90:   time_range = (600, 2300)
+        elif random < 95:   time_range = (300, 1200)
+        else:               time_range = (2000, 400)
+        
+        aeds_writer.writerow(Aed(id, closest_inter.id, time_range).csv)
 
-        aed_locations_writer.writerow(AedLocation(id, inters[coords].id).csv)
-
-    print(f"DONE!")
     print(len(inters))
