@@ -41,7 +41,7 @@ class Aed:
         self.id = id
         self.start_hour, self.close_hour = time_range
         self.intersection_id = intersection_id
-        self.csv = [self.id, self.intersection_id, False, self.start_hour, self.close_hour]
+        self.csv = [self.id, self.intersection_id, 'false', self.start_hour, self.close_hour]
 
 
 def filter(feature):
@@ -125,7 +125,7 @@ with (
         elif random < 90:   time_range = (600, 2300)
         elif random < 95:   time_range = (300, 1200)
         else:               time_range = (2000, 400)
-        
+
         aeds_writer.writerow(Aed(id, closest_inter.id, time_range).csv)
 
     print(len(inters))
