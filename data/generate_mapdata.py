@@ -1,6 +1,7 @@
 import geojson
 import itertools
 import csv
+import sys
 from random import randint
 from geopy import distance
 from geojson_length import calculate_distance, Unit
@@ -22,6 +23,11 @@ class Intersection:
 
     def __init__(self, coord):
         self.id = next(self.id_iter)
+        self.xcoord, self.ycoord = coord
+        self.csv = [self.id, self.xcoord, self.ycoord]
+    
+    def __init__(self, id, coord):
+        self.id = id
         self.xcoord, self.ycoord = coord
         self.csv = [self.id, self.xcoord, self.ycoord]
 
@@ -56,53 +62,65 @@ def filter(feature):
     return False
 
 
-if __name__ == "__main__":
+def generate_street_inter():
     with (
         open(STREETS_GEOJSON_PATH, "r") as streets_geojson_file,
-        open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
         open(STREETS_PATH, "w+", encoding='UTF8', newline='') as streets_file,
-        open(INTERS_PATH, "w+", encoding='UTF8', newline='') as inters_file,
-        open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aeds_file
+        open(INTERS_PATH, "w+", encoding='UTF8', newline='') as inters_file
+    ):
+        if "-gs" in sys.argv:
+            inters = {}
+            streets_writer = csv.writer(streets_file)
+            inters_writer = csv.writer(inters_file)
+
+            streets_writer.writerow(STREETS_HEADER)
+            inters_writer.writerow(INTERS_HEADER)
+
+            street_features = geojson.load(streets_geojson_file)["features"]
+            n = 1
+            for feature in street_features:
+                print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets: {n/len(street_features)*100}%")
+                n += 1
+                # Filter unwanted features.
+                if filter(feature):
+                    continue
+
+                # Calculate the length and get the id of the streetsegment
+                length = calculate_distance(feature, Unit.meters)
+                id = feature["properties"]["OBJECTID"]
+
+                # Check if an intersection exists for the first and last coordinate of the
+                # streetsegment, if not create a new intersection at those coordinates.
+                aed_coords = list(geojson.coords(feature))
+                first_coord = aed_coords[0]
+                last_coord = aed_coords[-1]
+                if first_coord == last_coord:
+                    continue
+                if first_coord not in inters:
+                    inters[first_coord] = Intersection(first_coord)
+                    inters_writer.writerow(inters[first_coord].csv)
+                if last_coord not in inters:
+                    inters[last_coord] = Intersection(last_coord)
+                    inters_writer.writerow(inters[last_coord].csv)
+
+                streets_writer.writerow(StreetSegment(
+                    id, inters[first_coord].id, inters[last_coord].id, length).csv)
+
+
+def generate_aed():
+    with(
+        open(INTERS_PATH, "r", encoding='UTF8', newline='') as inters_file,
+        open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
+        open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aed_file
     ):
         inters = {}
-        streets_writer = csv.writer(streets_file)
-        inters_writer = csv.writer(inters_file)
-        aeds_writer = csv.writer(aeds_file)
-
-        streets_writer.writerow(STREETS_HEADER)
-        inters_writer.writerow(INTERS_HEADER)
-        aeds_writer.writerow(AEDS_HEADER)
-
-        street_features = geojson.load(streets_geojson_file)["features"]
-        n = 1
-        for feature in street_features:
-            print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets: {n/len(street_features)*100}%")
-            n += 1
-            # Filter unwanted features.
-            if filter(feature):
-                continue
-
-            # Calculate the length and get the id of the streetsegment
-            length = calculate_distance(feature, Unit.meters)
-            id = feature["properties"]["OBJECTID"]
-
-            # Check if an intersection exists for the first and last coordinate of the
-            # streetsegment, if not create a new intersection at those coordinates.
-            aed_coords = list(geojson.coords(feature))
-            first_coord = aed_coords[0]
-            last_coord = aed_coords[-1]
-            if first_coord == last_coord:
-                continue
-            if first_coord not in inters:
-                inters[first_coord] = Intersection(first_coord)
-                inters_writer.writerow(inters[first_coord].csv)
-            if last_coord not in inters:
-                inters[last_coord] = Intersection(last_coord)
-                inters_writer.writerow(inters[last_coord].csv)
-
-            streets_writer.writerow(StreetSegment(
-                id, inters[first_coord].id, inters[last_coord].id, length).csv)
-
+        inters_reader = csv.reader(inters_file)
+        next(inters_reader)
+        for inter_row in inters_reader:
+            coords = (inter_row[1], inter_row[2])
+            inters[coords] = Intersection(inter_row[0], coords)
+        
+        aeds_writer = csv.writer(aed_file)
         aed_features = geojson.load(aeds_geojson_file)["features"]
         n = 1
         for feature in aed_features:
@@ -110,13 +128,17 @@ if __name__ == "__main__":
             n += 1
             id = feature["properties"]["OBJECTID"]
             aed_coords = tuple(feature["geometry"]["coordinates"])
-            # TODO: Find closest intersection
+            
             if aed_coords not in inters:
                 shortest = 1e6
+                shortest_coord_diff = 1e6
                 for inter_coords in inters.keys():
-                    diff = distance.distance(aed_coords, inter_coords)
-                    if diff < shortest:
-                        shortest = diff
+                    coord_diff = abs(aed_coords[0]-inter_coords[0])+abs(aed_coords[1]-inter_coords[1])
+                    if(coord_diff > shortest_coord_diff): continue
+                    dist_diff = distance.distance(aed_coords, inter_coords)
+                    if dist_diff < shortest:
+                        shortest = dist_diff
+                        shortest_coord_diff = coord_diff
                         closest_inter = inters[inter_coords]
             else:
                 closest_inter = inters[aed_coords]
@@ -130,4 +152,9 @@ if __name__ == "__main__":
             
             aeds_writer.writerow(Aed(id, closest_inter.id, time_range).csv)
 
-        print(len(inters))
+
+if __name__ == "__main__":
+    if "-gs" in sys.argv:
+        generate_street_inter()
+    if "-ga" in sys.argv:
+        generate_aed()
