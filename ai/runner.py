@@ -9,4 +9,4 @@ class Runner:
         self.speed = randrange(3,6)     # random number from 3-5
 
     def create_node(self):
-        return f"CREATE (r:Runner {{id: {self.id}, speed: {self.speed}}})"
+        return f"CREATE (p:Runner {{id: {self.id}, speed: {self.speed}}})"

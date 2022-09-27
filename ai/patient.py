@@ -5,3 +5,6 @@ class Patient:
 
     def __init__(self):
         self.id = next(self.id_iter)
+
+    def create_node(self):
+        return f"CREATE (p:Patient {{id: {self.id}}})"

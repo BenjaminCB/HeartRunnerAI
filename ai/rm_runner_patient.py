@@ -13,4 +13,5 @@ if __name__ == "__main__":
     password = os.getenv("NEO4J_PASSWORD")
     db = heart_runner_db.HeartRunnerDB(uri, user, password)
     db.rm_runners()
+    db.rm_patients()
     db.close()
