@@ -32,12 +32,17 @@ class HeartRunnerDB:
         tx.run(query)
 
     def gen_runners(self, n=1):
-        self._gen_persons(Runner, n)
+        res = self._gen_persons(Runner, n)
+        row2runner = lambda row: {"id": row["p"]["id"], "speed": row["p"]["speed"]}
+        return list(map(row2runner, res))
 
-    def gen_pationts(self, n=1):
-        self._gen_persons(Patient, n)
+    def gen_patients(self, n=1):
+        res = self._gen_persons(Patient, n)
+        row2patient = lambda row: {"id": row["p"]["id"]}
+        return list(map(row2patient, res))
 
     def _gen_persons(self, constructor, n=1):
+        res = []
         with self.driver.session(database="neo4j") as session:
             count = session.execute_read(self._intersection_count)[0]
             print(count)
@@ -45,7 +50,8 @@ class HeartRunnerDB:
             for id in ids:
                 result = session.execute_write(self._gen_person, id, constructor())
                 for row in result:
-                    print(row)
+                    res.append(row)
+        return res
 
     @staticmethod
     def _gen_person(tx, id, person):
