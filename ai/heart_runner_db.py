@@ -15,6 +15,22 @@ class HeartRunnerDB:
         # Don't forget to close the driver connection when you are finished with it
         self.driver.close()
 
+    def rm_runners(self):
+        with self.driver.session(database="neo4j") as session:
+            session.execute_write(self._rm_nodes, "Runner")
+
+    def rm_patients(self):
+        with self.driver.session(database="neo4j") as session:
+            session.execute_write(self._rm_nodes, "Patient")
+
+    @staticmethod
+    def _rm_nodes(tx, node_type):
+        query = (
+            f'MATCH (n:{node_type}) '
+            "DETACH DELETE n"
+        )
+        tx.run(query)
+
     def gen_runners(self, n=1):
         with self.driver.session(database="neo4j") as session:
             count = session.execute_read(self._intersection_count)[0]
