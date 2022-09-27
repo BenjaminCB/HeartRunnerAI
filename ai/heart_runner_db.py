@@ -33,13 +33,11 @@ class HeartRunnerDB:
 
     def gen_runners(self, n=1):
         res = self._gen_persons(Runner, n)
-        row2runner = lambda row: {"id": row["p"]["id"], "speed": row["p"]["speed"]}
-        return list(map(row2runner, res))
+        return list(map(Runner.row2runner, res))
 
     def gen_patients(self, n=1):
         res = self._gen_persons(Patient, n)
-        row2patient = lambda row: {"id": row["p"]["id"]}
-        return list(map(row2patient, res))
+        return list(map(Patient.row2patient, res))
 
     def _gen_persons(self, constructor, n=1):
         res = []

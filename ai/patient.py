@@ -8,3 +8,6 @@ class Patient:
 
     def create_node(self):
         return f"CREATE (p:Patient {{id: {self.id}}})"
+
+    def row2patient(row):
+        return {"id": row["p"]["id"]}

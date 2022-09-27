@@ -10,3 +10,7 @@ class Runner:
 
     def create_node(self):
         return f"CREATE (p:Runner {{id: {self.id}, speed: {self.speed}}})"
+
+    @staticmethod
+    def row2runner(row):
+        return {"id": row["p"]["id"], "speed": row["p"]["speed"]}
