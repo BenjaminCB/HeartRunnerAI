@@ -131,14 +131,10 @@ def generate_aed():
             
             if aed_coords not in inters:
                 shortest = 1e6
-                shortest_coord_diff = 1e6
                 for inter_coords in inters.keys():
-                    coord_diff = abs(aed_coords[0]-inter_coords[0])+abs(aed_coords[1]-inter_coords[1])
-                    if(coord_diff > shortest_coord_diff): continue
-                    dist_diff = distance.distance(aed_coords, inter_coords)
+                    dist_diff = distance.GreatCircleDistance(aed_coords, inter_coords)
                     if dist_diff < shortest:
                         shortest = dist_diff
-                        shortest_coord_diff = coord_diff
                         closest_inter = inters[inter_coords]
             else:
                 closest_inter = inters[aed_coords]
