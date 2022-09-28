@@ -3,7 +3,7 @@ import logging
 from neo4j.exceptions import ServiceUnavailable
 from runner import Runner
 from patient import Patient
-from random import sample, randint
+from random import sample
 
 
 class HeartRunnerDB:
@@ -76,6 +76,27 @@ class HeartRunnerDB:
         try:
             return [row["count(*)"] for row in result]
         # Capture any errors along with the query and data for traceability
+        except ServiceUnavailable as exception:
+            logging.error("{query} raised an error: \n {exception}".format(
+                query=query, exception=exception))
+            raise
+
+    def connecting_intersections(self, id):
+        with self.driver.session(database="neo4j") as session:
+            result = session.execute_read(self._connecting_intersections, id)
+            return result
+
+    @staticmethod
+    def _connecting_intersections(tx, id):
+        query = (
+            "MATCH (:Intersection {id: $id})-[r:StreetSegment]-(i:Intersection) "
+            "RETURN r,i"
+        )
+        result = tx.run(query, id=id)
+        try:
+            row2street_segment = lambda row: {"id": row["r"]["id"], "length": row["r"]["length"]}
+            row2intersection = lambda row: {"id": row["i"]["id"], "x_coord": row["i"]["x_coord"], "y_coord": row["i"]["y_coord"]}
+            return [(row2street_segment(row), row2intersection(row)) for row in result]
         except ServiceUnavailable as exception:
             logging.error("{query} raised an error: \n {exception}".format(
                 query=query, exception=exception))

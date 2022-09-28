@@ -16,4 +16,6 @@ if __name__ == "__main__":
     print(runners)
     patients = db.gen_patients(5)
     print(patients)
+    connecting = db.connecting_intersections(2000)
+    print(connecting)
     db.close()
