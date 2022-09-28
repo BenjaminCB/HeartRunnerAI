@@ -3,7 +3,7 @@ import logging
 from neo4j.exceptions import ServiceUnavailable
 from runner import Runner
 from patient import Patient
-from random import sample
+from random import sample, randint
 
 
 class HeartRunnerDB:
@@ -43,7 +43,7 @@ class HeartRunnerDB:
         res = []
         with self.driver.session(database="neo4j") as session:
             count = session.execute_read(self._intersection_count)[0]
-            print(count)
+            print(f'Intersection count: {count}')
             ids = sample(range(count), n)
             for id in ids:
                 result = session.execute_write(self._gen_person, id, constructor())
