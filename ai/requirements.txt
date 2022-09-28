@@ -9,6 +9,7 @@ pluggy==1.0.0
 pyflakes==2.5.0
 pynvim==0.4.3
 pyparsing==3.0.9
+python-dotenv==0.21.0
 python-lsp-jsonrpc==1.0.0
 python-lsp-server==1.5.0
 pytoolconfig==1.2.2
