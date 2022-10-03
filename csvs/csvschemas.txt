@@ -1,8 +1,0 @@
-Intersections file: id, x_cord, y_cord, weight
-AEDs file: id, available, hoers
-AEDLocatins file: aed_id,intersection_id
-PatientLocations file: patient_id,intersection_id
-Patients file: patient_id
-RunnerLocations file: runner_id,intersection_id
-Runner: id, speed
-StreetSegment: intersection_id_a, intersection_id_b, length
