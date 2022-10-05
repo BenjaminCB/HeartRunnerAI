@@ -1,10 +1,9 @@
 import csv
 import json
 import sys
-from typing import Dict, List
 from generate_mapdata import STREETS_PATH, INTERS_PATH
 
-GRAPH_JSON_PATH = "./graph/mapdata_graph.json"
+GRAPH_JSON_PATH = "data/graph/mapdata_graph.json"
 
 def generate_graph():
     with (

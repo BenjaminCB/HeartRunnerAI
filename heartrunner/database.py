@@ -1,5 +1,5 @@
 import logging
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, Transaction
 from neo4j.exceptions import ServiceUnavailable
 from random import sample
 from .types import Patient, Runner
@@ -22,8 +22,7 @@ class HeartRunnerDB:
         with self.driver.session(database="neo4j") as session:
             session.execute_write(self._rm_nodes, "Patient")
 
-    @staticmethod
-    def _rm_nodes(tx, node_type):
+    def _rm_nodes(tx: Transaction, node_type):
         query = (
             f'MATCH (n:{node_type}) '
             "DETACH DELETE n"
@@ -45,13 +44,13 @@ class HeartRunnerDB:
             print(f'Intersection count: {count}')
             ids = sample(range(count), n)
             for id in ids:
+                print(f'ID: {id}')
                 result = session.execute_write(self._gen_person, id, constructor())
                 for row in result:
                     res.append(row)
         return res
 
-    @staticmethod
-    def _gen_person(tx, id, person):
+    def _gen_person(tx: Transaction, id, person):
         query = (
             "MATCH (i:Intersection) "
             "WHERE id(i) = $id "
@@ -68,8 +67,7 @@ class HeartRunnerDB:
                 query=query, exception=exception))
             raise
 
-    @staticmethod
-    def _intersection_count(tx):
+    def _intersection_count(tx: Transaction):
         query = "MATCH (i:Intersection) RETURN count(*)"
         result = tx.run(query)
         try:
@@ -85,8 +83,7 @@ class HeartRunnerDB:
             result = session.execute_read(self._connecting_intersections, id)
             return result
 
-    @staticmethod
-    def _connecting_intersections(tx, id):
+    def _connecting_intersections(tx: Transaction, id):
         query = (
             "MATCH (:Intersection {id: $id})-[r:StreetSegment]-(i:Intersection) "
             "RETURN r,i"
