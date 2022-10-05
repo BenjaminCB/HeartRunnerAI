@@ -1,9 +1,11 @@
 import logging
+from random import sample
+import types
 from neo4j import GraphDatabase, Transaction
 from neo4j.exceptions import ServiceUnavailable
-from random import sample
-from .types import Patient, Runner
-
+from geopy import distance
+from .types import *
+from .pathfinder import Graph
 
 class HeartRunnerDB:
 
@@ -97,3 +99,56 @@ class HeartRunnerDB:
             logging.error("{query} raised an error: \n {exception}".format(
                 query=query, exception=exception))
             raise
+
+    def get_subgraph(self, patient: Patient, kilometers=1):
+        latitude_range = None
+        longitude_range = None
+        with self.driver.session(database="neo4j") as session:
+            graph = session.execute_read(self._get_subgraph, latitude_range, longitude_range)
+            return graph
+
+    def _get_subgraph(tx: Transaction, lat_range, lon_range):
+        query = (
+            "MATCH (i1:Intersection)-[s:Streetsegment]-(i2:Intersection) "
+            f"WHERE i1.latitude <= {lat_range[0]} AND i1.latitude >= {lat_range[1]} AND i1.longitude <= {lon_range[1]} AND i1.longitude >= {lon_range[0]} "
+            "OPTIONAL MATCH (i1)-[:LocatedAt]-(a:AED) "
+            "OPTIONAL MATCH (i1)-[:LocatedAt]-(r:Runner) "
+            "RETURN i1, i2, s, a, r "
+        )
+        result = tx.run(query)
+
+        graph = Graph()
+        # Parse query response into a graph
+        for record in result:
+            # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
+            i1_id = record['i1']['id']
+            i1_coord = (record['i1']['latitude'], record['i1']['longitude'])
+            i1_inter = Intersection(i1_coord, i1_id)
+            graph.add_node(i1_inter)
+
+            i2_id = record['i2']['id']
+            i2_coord = (record['i2']['latitude'], record['i2']['longitude'])
+            i2_inter = Intersection(i2_coord, i2_id)
+            graph.add_node(i2_inter) 
+
+            s_id = record['s']['id']
+            s_length = record['s']['length']
+            s_street = StreetSegment(s_id, i1_id, i2_id, s_length)
+            graph.add_edge(s_street)
+            
+            # OPTIONAL MATCH (i1)--(a:AED)
+            if record['a'] is not None:
+                a_id = record['a']['id']
+                a_time_range = (record['a']['open_hour'], record['a']['close_hour'])
+                a_in_use = record['a']['in_use']
+                aed = Aed(a_id, i1_id, a_time_range, a_in_use)
+                graph.add_aed(aed, i1_id)
+            
+            # OPTIONAL MATCH (i1)--(r:Runner)
+            if record['r'] is not None:
+                s_id = record['r']['id']
+                speed = record['r']['speed']
+                runner = Runner(s_id, speed)
+                graph.add_runner(runner)
+        
+        return graph
