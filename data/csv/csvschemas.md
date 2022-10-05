@@ -1,4 +1,4 @@
-- AEDs(ID)
+- AEDs(ID, INTERSECTION_ID, IN_USE, OPEN_HOUR, CLOSE_HOUR)
   - ID is the GeoJSON Feature ObjectID. Allows us to retrieve all the additional information if necessary, for example visualizing a route.
   
 - Intersections(ID, LATITUDE, LONGITUDE)
