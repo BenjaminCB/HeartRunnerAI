@@ -14,22 +14,18 @@ AEDS_PATH = "./csv/aeds.csv"
 INTERS_PATH = "./csv/intersections.csv"
 STREETS_HEADER = ["ID", "HEAD_INTERSECTION_ID",
                   "TAIL_INTERSECTION_ID", "LENGTH"]
-INTERS_HEADER = ["ID", "X_COORD", "Y_COORD"]
+INTERS_HEADER = ["ID", "LATITUDE", "LONGITUDE"]
 AEDS_HEADER = ["ID", "INTERSECTION_ID", "IN_USE", "OPEN_HOUR", "CLOSE_HOUR"]
 
 
 class Intersection:
     id_iter = itertools.count(1)
 
-    def __init__(self, coord):
-        self.id = next(self.id_iter)
-        self.xcoord, self.ycoord = coord
-        self.csv = [self.id, self.xcoord, self.ycoord]
-    
-    def __init__(self, id, coord):
-        self.id = id
-        self.xcoord, self.ycoord = coord
-        self.csv = [self.id, self.xcoord, self.ycoord]
+    def __init__(self, coord, id = None):
+        self.id = next(self.id_iter) if id == None else id
+        self.longitude, self.latitude = coord
+        self.csv = [self.id, self.latitude, self.longitude]
+
 
 
 class StreetSegment:
@@ -91,9 +87,9 @@ def generate_street_inter():
 
                 # Check if an intersection exists for the first and last coordinate of the
                 # streetsegment, if not create a new intersection at those coordinates.
-                aed_coords = list(geojson.coords(feature))
-                first_coord = aed_coords[0]
-                last_coord = aed_coords[-1]
+                street_coords = list(geojson.coords(feature))
+                first_coord = street_coords[0]
+                last_coord = street_coords[-1]
                 if first_coord == last_coord:
                     continue
                 if first_coord not in inters:
@@ -117,8 +113,8 @@ def generate_aed():
         inters_reader = csv.reader(inters_file)
         next(inters_reader)
         for inter_row in inters_reader:
-            coords = (inter_row[1], inter_row[2])
-            inters[coords] = Intersection(inter_row[0], coords)
+            coords = (inter_row[2], inter_row[1])
+            inters[coords] = Intersection(coords, id=inter_row[0])
         
         aeds_writer = csv.writer(aed_file)
         aed_features = geojson.load(aeds_geojson_file)["features"]
