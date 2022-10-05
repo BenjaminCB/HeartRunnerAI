@@ -1,9 +1,8 @@
-from neo4j import GraphDatabase
 import logging
+from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
-from runner import Runner
-from patient import Patient
 from random import sample
+from .types import Patient, Runner
 
 
 class HeartRunnerDB:
