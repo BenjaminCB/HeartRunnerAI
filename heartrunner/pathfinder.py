@@ -3,10 +3,10 @@ from .types import *
 
 class Graph:
     nodes: Dict[int, Intersection]
-    edges: Dict[int, StreetSegment]
+    edges: Dict[int, Streetsegment]
     adj_list: Dict[int, List[Tuple]]
     runners: Dict[int, List[Runner]]
-    aeds: Dict[int, List[Aed]]
+    aeds: Dict[int, List[AED]]
     
     def __init__(self):
         self.nodes = {}
@@ -20,7 +20,7 @@ class Graph:
             self.nodes[node.id] = node
             self.adj_list[node.id] = []
 
-    def add_edge(self, edge: StreetSegment):
+    def add_edge(self, edge: Streetsegment):
         self.edges[edge.id] = edge
 
         head_id = edge.head_intersection_id
@@ -29,7 +29,7 @@ class Graph:
         self.adj_list[head_id].append( (edge.id, tail_id) )
         self.adj_list[tail_id].append( (edge.id, head_id) )
 
-    def add_aed(self, aed: Aed, intersection_id: int):
+    def add_aed(self, aed: AED, intersection_id: int):
         if intersection_id not in self.aeds:
             self.aeds[intersection_id] = []
         self.aeds[intersection_id].append(aed)

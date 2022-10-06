@@ -5,7 +5,7 @@ import sys
 from random import randint
 from geopy import distance
 from geojson_length import calculate_distance, Unit
-from heartrunner.types import Intersection, StreetSegment, Aed
+from heartrunner.types import Intersection, Streetsegment, AED
 
 STREETS_GEOJSON_PATH = "data/geojson/streetsegments.geojson"
 AEDS_GEOJSON_PATH = "data/geojson/aeds.geojson"
@@ -71,7 +71,7 @@ def generate_street_inter():
                     inters[last_coord] = Intersection(last_coord)
                     inters_writer.writerow(inters[last_coord].csv)
 
-                streets_writer.writerow(StreetSegment(
+                streets_writer.writerow(Streetsegment(
                     id, inters[first_coord].id, inters[last_coord].id, length).csv)
 
 
@@ -114,7 +114,7 @@ def generate_aed():
             elif random < 95:   time_range = (300, 1200)
             else:               time_range = (2000, 400)
             
-            aeds_writer.writerow(Aed(id, closest_inter.id, time_range).csv)
+            aeds_writer.writerow(AED(id, closest_inter.id, time_range).csv)
 
 
 if __name__ == "__main__":
