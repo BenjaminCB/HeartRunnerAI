@@ -1,3 +1,4 @@
+import logging
 from random import sample
 from typing import List
 from neo4j import GraphDatabase, Transaction, ResultSummary
@@ -18,38 +19,57 @@ class HeartRunnerDB(object):
 
     def __batch_query(self, query: str, batch: List[dict]):
         with self.driver.session(database="neo4j") as session:
-            session.run(query, batch=batch)
+            try:
+                session.run(query, batch=batch)
+            except:
+                logging.exception(" Error while executing __batch_query")
+                return None
 
-    def generate_runners(self, n=1):
-        intersection_count = self.count_nodes(NodeType.Intersection)
-        ids = sample(range(intersection_count), n)
+    def generate_runners(self, n=1) -> ResultSummary | None:
+        count = self.count_nodes(NodeType.Intersection)
+        n = count if n > count else n
+        ids = sample(range(count), n)
         batch = [vars(Runner(intersection_id=id)) for id in ids]
         self.__batch_query(Runner.batch_merge_query(), batch)
 
-    def generate_patients(self, n=1):
-        intersection_count = self.count_nodes(NodeType.Intersection)
-        n = intersection_count if n > intersection_count else n
-        ids = sample(range(intersection_count), n)
+    def generate_patients(self, n=1) -> ResultSummary | None:
+        count = self.count_nodes(NodeType.Intersection)
+        n = count if n > count else n
+        ids = sample(range(count), n)
         batch = [vars(Patient(intersection_id=id)) for id in ids]
         self.__batch_query(Patient.batch_merge_query(), batch)
 
     def count_nodes(self, node_type: NodeType) -> int | None:
-        if not isinstance(node_type, NodeType):
-            return None
-        
         with self.driver.session(database="neo4j") as session:
-            result = session.run(f"MATCH (n:{node_type.name}) RETURN count(n)").single()
-            return result['count(n)']
+            try:
+                result = session.run(f"MATCH (n:{node_type.name}) RETURN count(n)").single()
+                return result['count(n)']
+            except:
+                logging.exception(" Error while executing count_nodes")
+                return None
 
     def delete_nodes(self, node_type: NodeType) -> ResultSummary | None:
-        if not isinstance(node_type, NodeType):
-            return None
-        
         with self.driver.session(database="neo4j") as session:
-            result = session.run(f"MATCH (n:{node_type.name}) DETACH DELETE n").consume()
-            return result
+            try:
+                result = session.run(f"MATCH (n:{node_type.name}) DETACH DELETE n").consume()
+                return result
+            except:
+                logging.exception(" Error while executing delete_nodes")
+                return None
 
-    def get_subgraph(self, origin: tuple, kilometers=1) -> Graph:
+    def get_location(self, person_type: NodeType, person_id: int) -> Intersection | None:
+        with self.driver.session(database="neo4j") as session:
+            try:
+                result = session.run(f"MATCH (p:{person_type.name})--(i) where p.id = {person_id} RETURN i").single()
+                lat = result['i']['latitude']
+                lon = result['i']['longitude']
+                id = result['i']['id']
+                return Intersection((lat, lon), id)
+            except:
+                logging.exception(" Error while executing get_location")
+                return None
+
+    def get_subgraph(self, origin: tuple, kilometers=1) -> Graph | None:
         dist_limit = distance.GreatCircleDistance(kilometers=kilometers)
         north_limit = tuple(dist_limit.destination(origin, 0))
         south_limit = tuple(dist_limit.destination(origin, 180))
@@ -57,8 +77,12 @@ class HeartRunnerDB(object):
         west_limit = tuple(dist_limit.destination(origin, 270))
         limits = (north_limit[0], south_limit[0], east_limit[1], west_limit[1])
         with self.driver.session(database="neo4j") as session:
-            graph = session.execute_read(self.__get_subgraph, limits)
-            return graph
+            try:
+                graph = session.execute_read(self.__get_subgraph, limits)
+                return graph
+            except:
+                logging.exception(" Error while executing get_subgraph")
+                return None
 
     @staticmethod
     def __get_subgraph(tx: Transaction, limits: tuple) -> Graph:

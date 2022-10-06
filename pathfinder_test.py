@@ -10,5 +10,4 @@ if __name__ == "__main__":
     user = os.getenv("NEO4J_USERNAME")
     password = os.getenv("NEO4J_PASSWORD")
     with HeartRunnerDB(uri, user, password) as db:
-        db.generate_runners(1000)
-        db.delete_nodes(NodeType.Runner)
+        pass
