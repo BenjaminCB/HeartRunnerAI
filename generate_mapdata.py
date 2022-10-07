@@ -5,45 +5,17 @@ import sys
 from random import randint
 from geopy import distance
 from geojson_length import calculate_distance, Unit
+from heartrunner.types import Intersection, Streetsegment, AED
 
-
-STREETS_GEOJSON_PATH = "./geojson/streetsegments.geojson"
-AEDS_GEOJSON_PATH = "./geojson/aeds.geojson"
-STREETS_PATH = "./csv/streetsegments.csv"
-AEDS_PATH = "./csv/aeds.csv"
-INTERS_PATH = "./csv/intersections.csv"
+STREETS_GEOJSON_PATH = "data/geojson/streetsegments.geojson"
+AEDS_GEOJSON_PATH = "data/geojson/aeds.geojson"
+STREETS_PATH = "data/csv/streetsegments.csv"
+AEDS_PATH = "data/csv/aeds.csv"
+INTERS_PATH = "data/csv/intersections.csv"
 STREETS_HEADER = ["ID", "HEAD_INTERSECTION_ID",
                   "TAIL_INTERSECTION_ID", "LENGTH"]
 INTERS_HEADER = ["ID", "LATITUDE", "LONGITUDE"]
 AEDS_HEADER = ["ID", "INTERSECTION_ID", "IN_USE", "OPEN_HOUR", "CLOSE_HOUR"]
-
-
-class Intersection:
-    id_iter = itertools.count(1)
-
-    def __init__(self, coord, id = None):
-        self.id = next(self.id_iter) if id == None else id
-        self.longitude, self.latitude = coord
-        self.csv = [self.id, self.latitude, self.longitude]
-
-
-
-class StreetSegment:
-    def __init__(self, id, head_id, tail_id, length):
-        self.id = id
-        self.head_intersection_id = head_id
-        self.tail_intersection_id = tail_id
-        self.length = length
-        self.csv = [self.id, self.head_intersection_id,
-                    self.tail_intersection_id, self.length]
-
-
-class Aed:
-    def __init__(self, id, intersection_id, time_range):
-        self.id = id
-        self.start_hour, self.close_hour = time_range
-        self.intersection_id = intersection_id
-        self.csv = [self.id, self.intersection_id, 'false', self.start_hour, self.close_hour]
 
 
 def filter(feature):
@@ -88,8 +60,8 @@ def generate_street_inter():
                 # Check if an intersection exists for the first and last coordinate of the
                 # streetsegment, if not create a new intersection at those coordinates.
                 street_coords = list(geojson.coords(feature))
-                first_coord = street_coords[0]
-                last_coord = street_coords[-1]
+                first_coord = tuple(reversed(street_coords[0]))
+                last_coord = tuple(reversed(street_coords[-1]))
                 if first_coord == last_coord:
                     continue
                 if first_coord not in inters:
@@ -99,7 +71,7 @@ def generate_street_inter():
                     inters[last_coord] = Intersection(last_coord)
                     inters_writer.writerow(inters[last_coord].csv)
 
-                streets_writer.writerow(StreetSegment(
+                streets_writer.writerow(Streetsegment(
                     id, inters[first_coord].id, inters[last_coord].id, length).csv)
 
 
@@ -113,7 +85,7 @@ def generate_aed():
         inters_reader = csv.reader(inters_file)
         next(inters_reader)
         for inter_row in inters_reader:
-            coords = (inter_row[2], inter_row[1])
+            coords = (inter_row[1], inter_row[2])
             inters[coords] = Intersection(coords, id=inter_row[0])
         
         aeds_writer = csv.writer(aed_file)
@@ -142,7 +114,7 @@ def generate_aed():
             elif random < 95:   time_range = (300, 1200)
             else:               time_range = (2000, 400)
             
-            aeds_writer.writerow(Aed(id, closest_inter.id, time_range).csv)
+            aeds_writer.writerow(AED(id, closest_inter.id, time_range).csv)
 
 
 if __name__ == "__main__":
