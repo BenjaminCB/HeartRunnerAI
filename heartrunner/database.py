@@ -95,7 +95,7 @@ class HeartRunnerDB(object):
         )
         result = tx.run(query)
         graph = Graph()
-        # Parse query response into a graph
+        # Parse query response into a graph 
         for record in result:
             # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
             i1_id = record['i1']['id']
@@ -126,6 +126,5 @@ class HeartRunnerDB(object):
                 s_id = record['r']['id']
                 speed = record['r']['speed']
                 runner = Runner(s_id, speed)
-                graph.add_runner(runner)
-        
+                graph.add_runner(runner, i1_id)
         return graph
