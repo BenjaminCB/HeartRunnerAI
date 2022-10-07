@@ -50,10 +50,13 @@ class Patient:
 class Intersection:
     id_iter = itertools.count(1)
 
-    def __init__(self, coord, id = None):
+    def __init__(self, coords: tuple, id = None):
         self.id = next(self.id_iter) if id == None else id
-        self.longitude, self.latitude = coord
+        self.latitude, self.longitude = coords
         self.csv = [self.id, self.latitude, self.longitude]
+
+    def coords(self) -> tuple:
+        return (self.latitude, self.longitude)
 
 class Streetsegment:
     def __init__(self, id, head_id, tail_id, length):

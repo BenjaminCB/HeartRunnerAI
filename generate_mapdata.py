@@ -60,8 +60,8 @@ def generate_street_inter():
                 # Check if an intersection exists for the first and last coordinate of the
                 # streetsegment, if not create a new intersection at those coordinates.
                 street_coords = list(geojson.coords(feature))
-                first_coord = street_coords[0]
-                last_coord = street_coords[-1]
+                first_coord = tuple(reversed(street_coords[0]))
+                last_coord = tuple(reversed(street_coords[-1]))
                 if first_coord == last_coord:
                     continue
                 if first_coord not in inters:
@@ -85,7 +85,7 @@ def generate_aed():
         inters_reader = csv.reader(inters_file)
         next(inters_reader)
         for inter_row in inters_reader:
-            coords = (inter_row[2], inter_row[1])
+            coords = (inter_row[1], inter_row[2])
             inters[coords] = Intersection(coords, id=inter_row[0])
         
         aeds_writer = csv.writer(aed_file)
