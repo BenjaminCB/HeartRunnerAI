@@ -12,13 +12,13 @@ class HeartrunnerDB:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
-    def __enter__(self): 
+    def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.driver.close()
 
-    def __batch_query(self, query: str, batch: List[dict]):
+    def _batch_query(self, query: str, batch: List[dict]):
         with self.driver.session(database="neo4j") as session:
             try:
                 session.run(query, batch=batch)
@@ -36,7 +36,7 @@ class HeartrunnerDB:
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (r:Runner {id: row.id, speed: row.speed})-[:LocatedAt]->(i) "
         )
-        self.__batch_query(query, batch)
+        self._batch_query(query, batch)
 
     def generate_patients(self, n=1):
         count = self.count_nodes(NodeType.Intersection)
@@ -48,7 +48,7 @@ class HeartrunnerDB:
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (p:Patient {id: row.id})-[:LocatedAt]->(i) "
         )
-        self.__batch_query(query, batch)
+        self._batch_query(query, batch)
 
     def update_node(self, node: Patient | Runner | AED | Intersection):
         pass
@@ -56,7 +56,8 @@ class HeartrunnerDB:
     def get_node(self, node_type: NodeType, node_id: int):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(f"MATCH (n:{node_type.name})--(m) WHERE n.id = {node_id} RETURN n, m").peek()
+                result = session.run(
+                    f"MATCH (n:{node_type.name})--(m) WHERE n.id = {node_id} RETURN n, m").peek()
                 match node_type:
                     case NodeType.Patient:
                         return Patient.from_record(result)
@@ -68,9 +69,9 @@ class HeartrunnerDB:
                         return Intersection.from_record(result)
             except:
                 logging.exception(" Error while executing get_node")
-                return None   
+                return None
 
-    def get_nodes(self, node_type: NodeType, limit = 0):
+    def get_nodes(self, node_type: NodeType, limit=0):
         with self.driver.session(database="neo4j") as session:
             try:
                 query = f"MATCH (n:{node_type.name})--(m) RETURN n, m"
@@ -91,12 +92,13 @@ class HeartrunnerDB:
                 return nodes
             except:
                 logging.exception(" Error while executing get_nodes")
-                return None   
+                return None
 
     def delete_nodes(self, node_type: NodeType):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(f"MATCH (n:{node_type.name}) DETACH DELETE n").consume()
+                result = session.run(
+                    f"MATCH (n:{node_type.name}) DETACH DELETE n").consume()
                 return result
             except:
                 logging.exception(" Error while executing delete_nodes")
@@ -105,7 +107,8 @@ class HeartrunnerDB:
     def count_nodes(self, node_type: NodeType):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(f"MATCH (n:{node_type.name}) RETURN count(n)").single()
+                result = session.run(
+                    f"MATCH (n:{node_type.name}) RETURN count(n)").single()
                 return result['count(n)']
             except:
                 logging.exception(" Error while executing count_nodes")
@@ -115,14 +118,17 @@ class HeartrunnerDB:
         with self.driver.session(database="neo4j") as session:
             try:
                 while True:
-                    location = self.get_node(NodeType.Intersection, patient.intersection_id).coords()
-                    dist_limit = distance.GreatCircleDistance(kilometers=kilometers)
+                    location = self.get_node(
+                        NodeType.Intersection, patient.intersection_id).coords()
+                    dist_limit = distance.GreatCircleDistance(
+                        kilometers=kilometers)
                     north_limit = tuple(dist_limit.destination(location, 0))
                     south_limit = tuple(dist_limit.destination(location, 180))
                     east_limit = tuple(dist_limit.destination(location, 90))
                     west_limit = tuple(dist_limit.destination(location, 270))
-                    limits = (north_limit[0], south_limit[0], east_limit[1], west_limit[1])
-                    graph = session.execute_read(self.__get_subgraph, limits)
+                    limits = (north_limit[0], south_limit[0],
+                              east_limit[1], west_limit[1])
+                    graph = session.execute_read(self._get_subgraph, limits)
                     if len(graph.runners.values()) > 0 and len(graph.aeds.values()) > 0:
                         break
                     kilometers += kilometers
@@ -132,7 +138,7 @@ class HeartrunnerDB:
                 return None
 
     @staticmethod
-    def __get_subgraph(tx: Transaction, limits: tuple):
+    def _get_subgraph(tx: Transaction, limits: tuple):
         query = (
             "MATCH (i1:Intersection)-[s:Streetsegment]-(i2:Intersection) "
             f"WHERE i1.latitude <= {limits[0]} AND i1.latitude >= {limits[1]} AND i1.longitude <= {limits[2]} AND i1.longitude >= {limits[3]} "
@@ -142,7 +148,7 @@ class HeartrunnerDB:
         )
         result = tx.run(query)
         graph = Graph()
-        # Parse query response into a graph 
+        # Parse query response into a graph
         for record in result:
             # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
             i1_id = record['i1']['id']
@@ -157,15 +163,16 @@ class HeartrunnerDB:
             s_length = record['s']['length']
             s = Streetsegment(s_id, i1_id, i2_id, s_length)
             graph.add_edge(i1, i2, s)
-            
+
             # OPTIONAL MATCH (i1)--(a:AED)
             if record['a'] is not None:
                 a_id = record['a']['id']
-                a_time_range = (record['a']['open_hour'], record['a']['close_hour'])
+                a_time_range = (record['a']['open_hour'],
+                                record['a']['close_hour'])
                 a_in_use = record['a']['in_use']
                 a = AED(a_id, i1_id, a_time_range, a_in_use)
                 graph.add_aed(i1, a)
-            
+
             # OPTIONAL MATCH (i1)--(r:Runner)
             if record['r'] is not None:
                 s_id = record['r']['id']
