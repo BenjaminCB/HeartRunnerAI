@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dotenv = "*"
+neo4j = "*"
+geopy = "*"
+geojson = "*"
+geojson-length = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
