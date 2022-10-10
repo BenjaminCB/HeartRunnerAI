@@ -5,6 +5,7 @@ from generate_mapdata import STREETS_PATH, INTERS_PATH
 
 GRAPH_JSON_PATH = "data/graph/mapdata_graph.json"
 
+
 def generate_graph():
     with (
         open(STREETS_PATH, "r") as street_file,
@@ -38,6 +39,7 @@ def generate_graph():
                     adj_list[node].append(edge[0])
         json.dump((nodes, edges, adj_list), graph_file)
 
+
 def dfs(adj_list, v):
     print(f"Depth-first search from node: {v}")
     visited = []
@@ -50,37 +52,43 @@ def dfs(adj_list, v):
                 to_visit.append(adjacent)
     return visited
 
+
 def find_edges(edges, graph):
     res = []
     for edge in edges:
         for node in graph:
-            if edge[0] == node or edge[1] == node: res.append(edge[2])
+            if edge[0] == node or edge[1] == node:
+                res.append(edge[2])
     return res
+
 
 def remove_disconnected(nodes, edges):
     street_rows = []
     inter_rows = []
-    with(
+    with (
         open(STREETS_PATH, "r") as street_file,
         open(INTERS_PATH, "r") as inter_file
     ):
         street_rows = list(csv.reader(street_file))
         inter_rows = list(csv.reader(inter_file))
-    
-    with(
+
+    with (
         open(STREETS_PATH, "w+") as street_file,
         open(INTERS_PATH, "w+") as inter_file
     ):
         street_writer = csv.writer(street_file)
         for street in street_rows:
-            if street[0] in edges: continue
+            if street[0] in edges:
+                continue
             street_writer.writerow(street)
-        
+
         inter_writer = csv.writer(inter_file)
         for inter in inter_rows:
-            if inter[0] in nodes: continue
+            if inter[0] in nodes:
+                continue
             inter_writer.writerow(inter)
-            
+
+
 if __name__ == "__main__":
     if "-g" in sys.argv:
         generate_graph()
@@ -110,5 +118,3 @@ if __name__ == "__main__":
             if "-r" in sys.argv:
                 print("Removing this sub-graph from dataset")
                 remove_disconnected(graph, graph_edges)
-            
-

@@ -47,7 +47,8 @@ def generate_street_inter():
             street_features = geojson.load(streets_geojson_file)["features"]
             n = 1
             for feature in street_features:
-                print(f"Generating {STREETS_PATH} and {INTERS_PATH} datasets: {n/len(street_features)*100}%")
+                print(
+                    f"Generating {STREETS_PATH} and {INTERS_PATH} datasets: {n/len(street_features)*100}%")
                 n += 1
                 # Filter unwanted features.
                 if filter(feature):
@@ -76,7 +77,7 @@ def generate_street_inter():
 
 
 def generate_aed():
-    with(
+    with (
         open(INTERS_PATH, "r", encoding='UTF8', newline='') as inters_file,
         open(AEDS_GEOJSON_PATH, "r") as aeds_geojson_file,
         open(AEDS_PATH, "w+", encoding='UTF8', newline='') as aed_file
@@ -87,20 +88,22 @@ def generate_aed():
         for inter_row in inters_reader:
             coords = (inter_row[1], inter_row[2])
             inters[coords] = Intersection(coords, id=inter_row[0])
-        
+
         aeds_writer = csv.writer(aed_file)
         aed_features = geojson.load(aeds_geojson_file)["features"]
         n = 1
         for feature in aed_features:
-            print(f"Generating {AEDS_PATH} dataset: {n/len(aed_features)*100}%")
+            print(
+                f"Generating {AEDS_PATH} dataset: {n/len(aed_features)*100}%")
             n += 1
             id = feature["properties"]["OBJECTID"]
             aed_coords = tuple(feature["geometry"]["coordinates"])
-            
+
             if aed_coords not in inters:
                 shortest = 1e6
                 for inter_coords in inters.keys():
-                    dist_diff = distance.GreatCircleDistance(aed_coords, inter_coords)
+                    dist_diff = distance.GreatCircleDistance(
+                        aed_coords, inter_coords)
                     if dist_diff < shortest:
                         shortest = dist_diff
                         closest_inter = inters[inter_coords]
@@ -108,12 +111,17 @@ def generate_aed():
                 closest_inter = inters[aed_coords]
 
             random = randint(1, 100)
-            if random < 40:     time_range = (0, 2359)
-            elif random < 70:   time_range = (900, 1700)
-            elif random < 90:   time_range = (600, 2300)
-            elif random < 95:   time_range = (300, 1200)
-            else:               time_range = (2000, 400)
-            
+            if random < 40:
+                time_range = (0, 2359)
+            elif random < 70:
+                time_range = (900, 1700)
+            elif random < 90:
+                time_range = (600, 2300)
+            elif random < 95:
+                time_range = (300, 1200)
+            else:
+                time_range = (2000, 400)
+
             aeds_writer.writerow(AED(id, closest_inter.id, time_range).csv)
 
 

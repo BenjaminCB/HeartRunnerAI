@@ -1,7 +1,7 @@
 import logging
 from random import sample
 from typing import List
-from neo4j import GraphDatabase, Transaction, ResultSummary
+from neo4j import GraphDatabase, Transaction
 from geopy import distance
 from .types import *
 from .pathfinder import Graph
