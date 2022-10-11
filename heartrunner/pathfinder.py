@@ -7,17 +7,21 @@ from geopy.distance import great_circle
 
 class Graph:
     nodes: dict[int, Intersection]
+    edges: dict[int, Streetsegment]
     adj_list: dict[Intersection, list[tuple[Streetsegment, Intersection]]]
     runners: dict[Intersection, list[Runner]]
     aeds: dict[Intersection, list[AED]]
 
     def __init__(self):
         self.nodes = {}
+        self.edges = {}
         self.adj_list = {}
         self.runners = {}
         self.aeds = {}
 
     def add_edge(self, u: Intersection, v: Intersection, e: Streetsegment):
+        self.edges[e.id] = e
+
         if u.id not in self.nodes:
             self.nodes[u.id] = u
             self.adj_list[u] = []
@@ -39,6 +43,50 @@ class Graph:
         if intersection not in self.runners:
             self.runners[intersection] = []
         self.runners[intersection].append(runner)
+
+    def rem_node(self, node: Intersection):
+        self.nodes.pop(node.id)
+        self.runners.pop(node, None)
+        self.aeds.pop(node, None)
+        neighbours = self.adj_list.pop(node)
+        for edge, neighbour in neighbours:
+            self.edges.pop(edge.id, None)
+
+    def dfs_visit(self, node: Intersection):
+        visited: list[Intersection] = []
+        to_visit: list[Intersection] = [node]
+        while len(to_visit) > 0:
+            u = to_visit.pop()
+            if u not in visited:
+                visited.append(u)
+                for e, v in self.adj_list[u]:
+                    to_visit.append(v)
+        return visited
+
+    def remove_subgraphs(self):
+        sub_graphs = []
+
+        visited: list[Intersection] = []
+        not_visited = list(self.adj_list.keys())
+        while len(not_visited) > 0:
+            node = not_visited.pop()
+            if node in visited:
+                continue
+            sub_graph = self.dfs_visit(node)
+            visited.extend(sub_graph)
+            sub_graphs.append(sub_graph)
+
+        max_nodes = 0
+        for graph in sub_graphs:
+            if len(graph) > max_nodes:
+                biggest_graph = graph
+                max_nodes = len(graph)
+        sub_graphs.remove(biggest_graph)
+
+        for graph in sub_graphs:
+            for node in graph:
+                self.rem_node(node)
+
 
 
 class Path:

@@ -1,7 +1,8 @@
+import geojson
 import itertools
+import random
 from enum import Enum
 from neo4j import Record
-from random import randrange
 
 
 class NodeType(Enum):
@@ -11,53 +12,8 @@ class NodeType(Enum):
     Patient = 4
 
 
-class AED:
-    def __init__(self, id, intersection_id, time_range, in_use='false'):
-        self.id = id
-        self.open_hour, self.close_hour = time_range
-        self.intersection_id = intersection_id
-        self.in_use = in_use
-        self.csv = [self.id, self.intersection_id,
-                    self.in_use, self.open_hour, self.close_hour]
-
-    @staticmethod
-    def from_record(record: Record):
-        id = record['n']['id']
-        open_hour = record['n']['open_hour']
-        close_hour = record['n']['close_hour']
-        in_use = record['n']['in_use']
-        intersection_id = record['m']['id']
-        return AED(id, intersection_id, (open_hour, close_hour), in_use)
-
-
-class Runner:
-    id_iter = itertools.count(1)
-
-    def __init__(self, id=None, speed=None, intersection_id=None):
-        self.id = next(self.id_iter) if id == None else id
-        self.speed = randrange(3, 6) if speed == None else speed
-        self.intersection_id = intersection_id
-
-    @staticmethod
-    def from_record(record: Record):
-        id = record['n']['id']
-        speed = record['n']['speed']
-        intersection_id = record['m']['id']
-        return Runner(id, speed, intersection_id)
-
-
-class Patient:
-    id_iter = itertools.count(1)
-
-    def __init__(self, id=None, intersection_id=None):
-        self.id = next(self.id_iter) if id == None else id
-        self.intersection_id = intersection_id
-
-    @staticmethod
-    def from_record(record: Record):
-        id = record['n']['id']
-        intersection_id = record['m']['id']
-        return Patient(id, intersection_id)
+_TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
+_TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
 
 
 class Intersection:
@@ -66,7 +22,6 @@ class Intersection:
     def __init__(self, coords: tuple, id=None):
         self.id = next(self.id_iter) if id == None else id
         self.latitude, self.longitude = coords
-        self.csv = [self.id, self.latitude, self.longitude]
 
     def __hash__(self) -> int:
         return hash((self.id, self.coords()))
@@ -78,34 +33,156 @@ class Intersection:
             self.coords() == __o.coords()
         )
 
+    def __repr__(self) -> str:
+        return f"I({self.id})"
+
     @staticmethod
     def from_record(record: Record):
         id = record['n']['id']
         lat = record['n']['latitude']
         lon = record['n']['longitude']
-        return Intersection((lat, lon), id)
+        return Intersection(id=id, coords=(lat, lon))
 
-    def coords(self) -> tuple:
+    def coords(self):
         return (self.latitude, self.longitude)
+
+    def geojson_feature(self):
+        return geojson.Feature(
+            geometry=geojson.Point((self.longitude, self.latitude)),
+            properties={
+                "type": "Intersection",
+                "id": self.id
+            }
+        )
 
 
 class Streetsegment:
-    def __init__(self, id, head_id, tail_id, length):
-        self.id = id
-        self.head_intersection_id = head_id
-        self.tail_intersection_id = tail_id
+    id_iter = itertools.count(1)
+
+    def __init__(self, id=None, head_id=None, tail_id=None, length=None, geometry=None):
+        self.id = next(self.id_iter) if id == None else id
+        self.head_id = head_id
+        self.tail_id = tail_id
         self.length = length
-        self.csv = [self.id, self.head_intersection_id,
-                    self.tail_intersection_id, self.length]
+        self.geometry = geometry
 
     def __hash__(self) -> int:
-        return hash((self.id, self.head_intersection_id, self.tail_intersection_id, self.length))
+        return hash((self.id, self.head_id, self.tail_id, self.length))
 
     def __eq__(self, __o: object) -> bool:
         return (
             isinstance(__o, Streetsegment) and
             self.id == __o.id and
-            self.head_intersection_id == __o.head_intersection_id and
-            self.tail_intersection_id == __o.tail_intersection_id and
+            self.head_id == __o.head_id and
+            self.tail_id == __o.tail_id and
             self.length == __o.length
+        )
+
+    def __repr__(self) -> str:
+        return f"S({self.id})"
+
+    def geojson_feature(self):
+        return geojson.Feature(
+            geometry=self.geometry, 
+            properties={
+                "type": "Streetsegment", 
+                "id": self.id, 
+                "length": self.length
+            }
+        )
+
+
+class AED:
+    id_iter = itertools.count(1)
+
+    def __init__(self, id=None, intersection_id=None, time_range=None, in_use='false'):
+        self.id = next(self.id_iter) if id == None else id
+        if time_range == None:
+            time_range = random.choices(_TIMERANGES, _TIMERANGES_PROB)[0]
+        self.open_hour, self.close_hour = time_range
+        self.intersection_id = intersection_id
+        self.in_use = in_use
+
+    def __repr__(self) -> str:
+        return f"A({self.id})"
+
+    @staticmethod
+    def from_record(record: Record):
+        id = record['n']['id']
+        open_hour = record['n']['open_hour']
+        close_hour = record['n']['close_hour']
+        in_use = record['n']['in_use']
+        intersection_id = record['m']['id']
+        return AED(
+            id=id, 
+            intersection_id=intersection_id, 
+            time_range=(open_hour, close_hour), 
+            in_use=in_use
+        )
+
+    def geojson_feature(self, location: Intersection):
+        return geojson.Feature(
+            geometry=geojson.Point((location.longitude, location.latitude)),
+            properties={
+                "type": "AED",
+                "id": self.id,
+                "in_use": self.in_use,
+                "open_hour": self.open_hour,
+                "close_hour": self.close_hour
+            }
+        )
+
+
+class Runner:
+    id_iter = itertools.count(1)
+
+    def __init__(self, id=None, speed=None, intersection_id=None):
+        self.id = next(self.id_iter) if id == None else id
+        self.speed = random.randrange(3, 6) if speed == None else speed
+        self.intersection_id = intersection_id
+
+    def __repr__(self) -> str:
+        return f"R({self.id})"
+
+    @staticmethod
+    def from_record(record: Record):
+        id = record['n']['id']
+        speed = record['n']['speed']
+        intersection_id = record['m']['id']
+        return Runner(id=id, speed=speed, intersection_id=intersection_id)
+
+    def geojson_feature(self, location: Intersection):
+        return geojson.Feature(
+            geometry=geojson.Point((location.longitude, location.latitude)),
+            properties={
+                "type": "Runner",
+                "id": self.id,
+                "speed": self.speed
+            }
+        )
+
+
+class Patient:
+    id_iter = itertools.count(1)
+
+    def __init__(self, id=None, intersection_id=None):
+        self.id = next(self.id_iter) if id == None else id
+        self.intersection_id = intersection_id
+
+    def __repr__(self) -> str:
+        return f"P({self.id})"
+
+    @staticmethod
+    def from_record(record: Record):
+        id = record['n']['id']
+        intersection_id = record['m']['id']
+        return Patient(id=id, intersection_id=intersection_id)
+
+    def geojson_feature(self, location: Intersection):
+        return geojson.Feature(
+            geometry=geojson.Point((location.longitude, location.latitude)),
+            properties={
+                "type": "Patient",
+                "id": self.id
+            }
         )

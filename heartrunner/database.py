@@ -1,6 +1,5 @@
 import logging
 from random import sample
-from typing import List
 from neo4j import GraphDatabase, Transaction
 from geopy import distance
 from .types import *
@@ -18,10 +17,11 @@ class HeartrunnerDB:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.driver.close()
 
-    def _batch_query(self, query: str, batch: List[dict]):
+    def _batch_query(self, query: str, batch: list[dict]):
         with self.driver.session(database="neo4j") as session:
             try:
-                session.run(query, batch=batch)
+                result = session.run(query, batch=batch).consume()
+                return result
             except:
                 logging.exception(" Error while executing __batch_query")
                 return None
@@ -49,9 +49,6 @@ class HeartrunnerDB:
             "MERGE (p:Patient {id: row.id})-[:LocatedAt]->(i) "
         )
         self._batch_query(query, batch)
-
-    def update_node(self, node: Patient | Runner | AED | Intersection):
-        pass
 
     def get_node(self, node_type: NodeType, node_id: int):
         with self.driver.session(database="neo4j") as session:
@@ -153,15 +150,22 @@ class HeartrunnerDB:
             # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
             i1_id = record['i1']['id']
             i1_coord = (record['i1']['latitude'], record['i1']['longitude'])
-            i1 = Intersection(i1_coord, i1_id)
+            i1 = Intersection(id=i1_id, coords=i1_coord)
 
             i2_id = record['i2']['id']
             i2_coord = (record['i2']['latitude'], record['i2']['longitude'])
-            i2 = Intersection(i2_coord, i2_id)
+            i2 = Intersection(id=i2_id, coords=i2_coord)
 
             s_id = record['s']['id']
             s_length = record['s']['length']
-            s = Streetsegment(s_id, i1_id, i2_id, s_length)
+            s_geometry = record['s']['geometry']
+            s = Streetsegment(
+                id=s_id, 
+                head_id=i1_id, 
+                tail_id=i2_id, 
+                length=s_length, 
+                geometry=s_geometry
+            )
             graph.add_edge(i1, i2, s)
 
             # OPTIONAL MATCH (i1)--(a:AED)
@@ -170,13 +174,18 @@ class HeartrunnerDB:
                 a_time_range = (record['a']['open_hour'],
                                 record['a']['close_hour'])
                 a_in_use = record['a']['in_use']
-                a = AED(a_id, i1_id, a_time_range, a_in_use)
+                a = AED(
+                    id=a_id, 
+                    intersection_id=i1_id, 
+                    time_range=a_time_range, 
+                    in_use=a_in_use
+                )
                 graph.add_aed(i1, a)
 
             # OPTIONAL MATCH (i1)--(r:Runner)
             if record['r'] is not None:
-                s_id = record['r']['id']
+                r_id = record['r']['id']
                 speed = record['r']['speed']
-                r = Runner(s_id, speed)
+                r = Runner(id=r_id, speed=speed, intersection_id=i1_id)
                 graph.add_runner(i1, r)
         return graph
