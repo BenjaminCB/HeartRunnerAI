@@ -4,6 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
+numpy = "*"
+tensorflow = "*"
 
 [dev-packages]
 autopep8 = "*"
