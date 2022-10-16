@@ -1,28 +1,41 @@
 import numpy as np
-import types as t
+import types as types
 
 
 class Environment:
 
-    def __init__(self, db):
-        self.queue = []
-        self.db = db
-        self.runner_count = self.db.count_nodes(t.NodeType.Runner)
-        self.state = np.zeros(self.runner_count)
+    def __init__(self, nn, n_runner):
+        self.tasks = []
+        self.nn = nn
+        self.n_runner = n_runner
+        self.state = np.zeros(self.n_runner)
+        self.score = 0
 
-    def enqueue(self, rs: list[(t.Runner, int, int)]):
-        self.queue.insert(0, rs)
+    def enqueue_tasks(self, rss: list[(list[(types.Runner, int, int)], int)]):
+        for rs in rss:
+            self.tasks.insert(0, rs)
 
     def _new_latency(self, ts: list[(int, int)]):
-        additional_latency = np.full(self.runner_count, np.Infinity)
+        # TODO infinity may not be the best value to give as it gives
+        # as it gives some problems when scaling with np.interp
+        additional_latency = np.full(self.n_runner, np.Infinity)
         for (runner_id, runner_time) in ts:
             additional_latency[runner_id] = runner_time
 
         return np.add(self.state, additional_latency)
 
-    def process_task(self):
-        task = self.queue.pop()
-        patient_times = np.add(self.state, map(lambda time: (time[0].id, time[1]), task))
-        aed_times = np.add(self.state, map(lambda time: (time[0].id, time[2]), task))
+    def process_tasks(self):
+        for task in self.tasks:
+            runner_times = task[0]
+            timestep = task[1]
+            self.state -= timestep
 
-        nn_input = np.concatenate((self.state, patient_times, aed_times), axis=None)
+            # calculate patient_times, figure out which value to give unreachable runners
+            # calculate aed_times
+            # concat all into big vector
+            # scale values from 0 to 1 look at np.interp
+            # get prediction from nn
+            # update state
+            # update score from new state
+
+        self.tasks = []
