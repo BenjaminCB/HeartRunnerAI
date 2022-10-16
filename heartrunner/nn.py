@@ -18,13 +18,13 @@ class NeuralNetwork:
     def predict(self, x):
         return self.model.predict(x)
 
-    # TODO implement noise
+    # TODO implement noise (look at the keras model saving and serialization API)
     # the method should not mutate the current nn but instead return a new one
     @staticmethod
     def mutate(nn, m_rate):
         pass
 
-    # TODO implement crossover
+    # TODO implement crossover (look at the keras model saving and serialization API)
     # method should perform a crossover of the nns and the inverse of that crossover and return them
     @staticmethod
     def crossover(p1, p2, c_rate):
