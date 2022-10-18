@@ -8,5 +8,5 @@ Do we have comparative methods?
 - Greedy can be used
 
 ## Things to do before the end of October
-Algorithm describtion, Problem statement in the Report
+Algorithm describtion, Problem statement in the Report. 
 Define actors, state and action
