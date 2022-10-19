@@ -1,11 +1,24 @@
+# Heartrunner AI
 5th semester computer science project
 
-Packages you can pip install:
-- python-dotenv
-- geojson
-- neo4j
-- geopy
+## Setup:
+All required packages for the project are managed inside a *pipenv*.  
+- To install missing required packages run:
 
-Packages you need to setup:
-- tenserflow
-    - With GPU setup
+        pipenv sync
+
+- To remove all packages not specified in the environment run:
+
+        pipenv clean
+
+- New packages can be added to and installed in the environment by running:
+
+        pipenv install <package>
+
+- Finally, to run a python file inside the environment use:
+
+        pipenv run python <file>
+
+- Optionally, a shell can be opened inside the environment using:
+
+        pipenv shell
