@@ -4,13 +4,14 @@ import geojson
 import geojson_length
 from geopy.distance import great_circle
 from .types import Intersection, Streetsegment, AED
-from .pathfinder import Graph
+from .pathfinder import Pathfinder
 
 INTERSECTIONS_CSV_HEADER = ["id", "latitude", "longitude"]
 INTERSECTIONS_CSV_PATH = "data/csv/intersections.csv"
 STREETS_CSV_HEADER = ["id", "head_id", "tail_id", "length", "geometry"]
 STREETS_CSV_PATH = "data/csv/streetsegments.csv"
-AEDS_CSV_HEADER = ["id", "intersection_id", "in_use", "open_hour", "close_hour"]
+AEDS_CSV_HEADER = ["id", "intersection_id",
+                   "in_use", "open_hour", "close_hour"]
 AEDS_CSV_PATH = "data/csv/aeds.csv"
 
 
@@ -26,11 +27,11 @@ def parse_geojson(streets_path, aeds_path):
             return True
         return False
 
-    with(
+    with (
         open(streets_path, "r") as streets_file,
-        open(aeds_path, "r") as aeds_file        
+        open(aeds_path, "r") as aeds_file
     ):
-        graph = Graph()
+        graph = Pathfinder()
         intersections = {}
         aed_features = geojson.load(aeds_file)["features"]
         street_features = geojson.load(streets_file)["features"]
@@ -56,19 +57,19 @@ def parse_geojson(streets_path, aeds_path):
             head = intersections[head_coords]
             tail = intersections[tail_coords]
             street = Streetsegment(
-                head_id=head.id,
-                tail_id=tail.id,
+                source=head,
+                target=tail,
                 length=length,
                 geometry=feature["geometry"]
             )
-            graph.add_edge(head, tail, street)
+            graph.add_edge(edge=street)
 
         n = 1
         aed_count = len(aed_features)
         for feature in aed_features:
             print(f"Parsing features in {aeds_path}: {n}/{aed_count}")
             n += 1
-            
+
             aed_coords = tuple(reversed(feature["geometry"]["coordinates"]))
             if aed_coords not in intersections:
                 shortest = math.inf
@@ -85,9 +86,7 @@ def parse_geojson(streets_path, aeds_path):
             )
             graph.add_aed(closest_inter, aed)
 
-    graph.remove_subgraphs()
-
-    with(
+    with (
         open(INTERSECTIONS_CSV_PATH, "w+") as intersections_file,
         open(STREETS_CSV_PATH, "w+") as streets_file,
         open(AEDS_CSV_PATH, "w+") as aeds_file
@@ -97,32 +96,31 @@ def parse_geojson(streets_path, aeds_path):
         aeds_writer = csv.writer(aeds_file)
 
         intersections_writer.writerow(INTERSECTIONS_CSV_HEADER)
-        for intersection in graph.nodes.values():
+        for intersection in graph.get_nodes():
             intersections_writer.writerow([
                 intersection.id,
                 intersection.latitude,
                 intersection.longitude
             ])
-        
+
         streets_writer.writerow(STREETS_CSV_HEADER)
-        for street in graph.edges.values():
+        for street in graph.get_edges():
             streets_writer.writerow([
                 street.id,
-                street.head_id,
-                street.tail_id,
+                street.source.id,
+                street.target.id,
                 street.length,
                 street.geometry
             ])
 
         aeds_writer.writerow(AEDS_CSV_HEADER)
-        for aeds in graph.aeds.values():
-            for aed in aeds:
-                aeds_writer.writerow([
-                    aed.id,
-                    aed.intersection_id,
-                    aed.in_use,
-                    aed.open_hour,
-                    aed.close_hour
-                ])
+        for aed in graph.get_aeds():
+            aeds_writer.writerow([
+                aed.id,
+                aed.intersection_id,
+                aed.in_use,
+                aed.open_hour,
+                aed.close_hour
+            ])
 
     return graph
