@@ -18,7 +18,7 @@ class NeuralNetwork:
     # Given the model is trained, outputs prediction(s) [( , ), ( , ) ...].
     def predict(self, x):
         prediction_each_neuron = self.model.predict(x)
-        prediction_each_neuron = numpy.array(prediction_each_neuron)
+        prediction_each_neuron = np.array(prediction_each_neuron)
         pre_sorted = []
         
         # index each prediction
