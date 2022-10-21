@@ -15,9 +15,20 @@ class NeuralNetwork:
             metrics=['accuracy']
         )
 
-    # TODO should probably do some post processing to make the prediction more human readable
+    # Given the model is trained, outputs prediction(s) [( , ), ( , ) ...].
     def predict(self, x):
-        return self.model.predict(x)
+        prediction_each_neuron = self.model.predict(x)
+        prediction_each_neuron = numpy.array(prediction_each_neuron)
+        pre_sorted = []
+        
+        # index each prediction
+        for i in range(0, len(prediction_each_neuron), 1):
+            for j in range(0, len(prediction_each_neuron[0]), 1):
+                pre_sorted.append((i, prediction_each_neuron[i][j]))
+
+        # sort by [( 2. , 1. )]
+        pre_sorted = sorted(sorted(pre_sorted, key=lambda x: x[1], reverse=True), key=lambda x: float(x[0]))
+        return pre_sorted
 
     # the method should not mutate the current nn but instead return a new one
     def mutate(self, m_rate: float):
