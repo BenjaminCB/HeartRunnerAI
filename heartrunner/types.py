@@ -34,7 +34,7 @@ class Intersection:
         )
 
     def __repr__(self) -> str:
-        return f"I({self.id})"
+        return f"Intersection({self.id})"
 
     @staticmethod
     def from_record(record: Record):
@@ -46,49 +46,63 @@ class Intersection:
     def coords(self):
         return (self.latitude, self.longitude)
 
-    def geojson_feature(self):
+    def geojson(self, style={}):
+        properties = {
+            "type": "Intersection",
+            "id": self.id
+        }
+        properties.update(style)
+
         return geojson.Feature(
             geometry=geojson.Point((self.longitude, self.latitude)),
-            properties={
-                "type": "Intersection",
-                "id": self.id
-            }
+            properties=properties
         )
 
 
 class Streetsegment:
     id_iter = itertools.count(1)
 
-    def __init__(self, id=None, head_id=None, tail_id=None, length=None, geometry=None):
+    def __init__(
+        self,
+        id: int = None,
+        source: Intersection = None,
+        target: Intersection = None,
+        length: float = None,
+        geometry: str = None
+    ):
         self.id = next(self.id_iter) if id == None else id
-        self.head_id = head_id
-        self.tail_id = tail_id
+        self.source = source
+        self.target = target
         self.length = length
-        self.geometry = geometry
+        self.geometry = geojson.loads(geometry)
 
     def __hash__(self) -> int:
-        return hash((self.id, self.head_id, self.tail_id, self.length))
+        return hash((self.id, self.source, self.target, self.length))
 
     def __eq__(self, __o: object) -> bool:
         return (
             isinstance(__o, Streetsegment) and
             self.id == __o.id and
-            self.head_id == __o.head_id and
-            self.tail_id == __o.tail_id and
+            self.source == __o.source and
+            self.target == __o.target and
             self.length == __o.length
         )
 
     def __repr__(self) -> str:
-        return f"S({self.id})"
+        return f"Streetsegment({self.id}, {self.source} <--> {self.target}, {self.length}m)"
 
-    def geojson_feature(self):
+    def geojson(self, style={}):
+        properties = {
+            "type": "Streetsegment",
+            "id": self.id,
+            "length": self.length,
+        }
+        properties.update(style)
+
         return geojson.Feature(
-            geometry=self.geometry, 
-            properties={
-                "type": "Streetsegment", 
-                "id": self.id, 
-                "length": self.length
-            }
+            id=self.id,
+            geometry=self.geometry,
+            properties=properties
         )
 
 
@@ -114,22 +128,25 @@ class AED:
         in_use = record['n']['in_use']
         intersection_id = record['m']['id']
         return AED(
-            id=id, 
-            intersection_id=intersection_id, 
-            time_range=(open_hour, close_hour), 
+            id=id,
+            intersection_id=intersection_id,
+            time_range=(open_hour, close_hour),
             in_use=in_use
         )
 
-    def geojson_feature(self, location: Intersection):
+    def geojson(self, location: Intersection, style={}):
+        properties = {
+            "type": "AED",
+            "id": self.id,
+            "in_use": self.in_use,
+            "open_hour": self.open_hour,
+            "close_hour": self.close_hour
+        }
+        properties.update(style)
+
         return geojson.Feature(
             geometry=geojson.Point((location.longitude, location.latitude)),
-            properties={
-                "type": "AED",
-                "id": self.id,
-                "in_use": self.in_use,
-                "open_hour": self.open_hour,
-                "close_hour": self.close_hour
-            }
+            properties=properties
         )
 
 
@@ -151,14 +168,17 @@ class Runner:
         intersection_id = record['m']['id']
         return Runner(id=id, speed=speed, intersection_id=intersection_id)
 
-    def geojson_feature(self, location: Intersection):
+    def geojson(self, location: Intersection, style={}):
+        properties = {
+            "type": "Runner",
+            "id": self.id,
+            "speed": self.speed
+        }
+        properties.update(style)
+
         return geojson.Feature(
             geometry=geojson.Point((location.longitude, location.latitude)),
-            properties={
-                "type": "Runner",
-                "id": self.id,
-                "speed": self.speed
-            }
+            properties=properties
         )
 
 
@@ -178,11 +198,14 @@ class Patient:
         intersection_id = record['m']['id']
         return Patient(id=id, intersection_id=intersection_id)
 
-    def geojson_feature(self, location: Intersection):
+    def geojson(self, location: Intersection, style={}):
+        properties = {
+            "type": "Patient",
+            "id": self.id
+        }
+        properties.update(style)
+
         return geojson.Feature(
             geometry=geojson.Point((location.longitude, location.latitude)),
-            properties={
-                "type": "Patient",
-                "id": self.id
-            }
+            properties=properties
         )
