@@ -1,7 +1,7 @@
 __pycache__
-venv
 .requirements.txt
 .env
+.idea
 
-#Macbook shit
-**/.DS_STORE
+# OSX
+.DS_STORE
