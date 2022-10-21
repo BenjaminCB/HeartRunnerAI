@@ -41,8 +41,7 @@ class Evolution:
         for i in range(0, self.n_pop, 2):
             p1, p2 = parents[i], parents[i + 1]
             for child in nn.NeuralNetwork.crossover(p1, p2, self.c_rate):
-                mutated_child = nn.NeuralNetwork.mutate(child, self.m_rate)
-                children.append(mutated_child)
+                children.append(child.mutate(self.m_rate))
         return children
 
     # calculate the reward
