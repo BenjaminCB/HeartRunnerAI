@@ -1,6 +1,7 @@
 import geojson
 import itertools
 import random
+from math import ceil
 from enum import Enum
 from neo4j import Record
 
@@ -169,6 +170,9 @@ class Path:
         for street in self.streets:
             rep += f"{street}\n"
         return rep
+
+    def time_to_cover(self, speed: float):
+        return ceil(self.length/speed)
 
     def is_aed_path(self):
         return True if isinstance(self.aed, AED) else False
