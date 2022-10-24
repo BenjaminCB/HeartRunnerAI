@@ -1,6 +1,7 @@
 __pycache__
 .requirements.txt
 .env
+.idea
 
 # OSX
 .DS_STORE
