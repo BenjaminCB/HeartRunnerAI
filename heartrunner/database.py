@@ -140,9 +140,9 @@ class HeartrunnerDB:
                 limits = (north_limit[0], south_limit[0],
                           east_limit[1], west_limit[1])
 
-                graph = session.execute_read(
+                pf = session.execute_read(
                     self.__get_pathfinder, limits, patient)
-                return graph
+                return pf
             except:
                 logging.exception(" Error while executing get_subgraph")
                 return None
