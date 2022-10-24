@@ -1,6 +1,7 @@
 import networkx as nx
 from .types import *
 from geopy.distance import great_circle
+from math import ceil
 
 
 def heuristic(node_a: Intersection, node_b: Intersection):
@@ -16,12 +17,12 @@ class Task:
     ):
         self.runner = runner
         self.patient_path = patient_path
-        self.patient_latency = self._latency(patient_path)
+        self.patient_time = patient_path.length/runner.speed
         self.aed_paths = aed_paths
-        self.aed_latencies = [self._latency(aed_path) for aed_path in aed_paths]
+        self.aed_times = [aed_path.length/runner.speed for aed_path in aed_paths]
 
     def _latency(self, path: Path):
-        return path.length/self.runner.speed
+        return ceil(path.length/self.runner.speed)
 
 
 class Pathfinder:

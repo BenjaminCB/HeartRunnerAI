@@ -182,7 +182,7 @@ class Runner:
 
     def __init__(self, id=None, speed=None, intersection_id=None):
         self.id = next(self.id_iter) if id == None else id
-        self.speed = random.randrange(3, 6) if speed == None else speed
+        self.speed = (random.random()*3)+3 if speed == None else speed
         self.intersection_id = intersection_id
 
     def __repr__(self) -> str:
