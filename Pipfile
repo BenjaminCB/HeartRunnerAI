@@ -5,6 +5,10 @@ verify_ssl = true
 
 [packages]
 networkx = "*"
+numpy = "*"
+tensorflow = {version = "*", sys_platform = "!= 'darwin'"}
+tensorflow-macos = {version = "*", sys_platform = "== 'darwin'"}
+tensorflow-metal = {version = "*", sys_platform = "== 'darwin'"}
 
 [dev-packages]
 autopep8 = "*"
