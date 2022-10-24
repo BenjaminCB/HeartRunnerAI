@@ -5,15 +5,15 @@ from enum import Enum
 from neo4j import Record
 
 
+_TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
+_TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
+
+
 class NodeType(Enum):
     Intersection = 1
     AED = 2
     Runner = 3
     Patient = 4
-
-
-_TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
-_TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
 
 
 class Intersection:
@@ -150,6 +150,33 @@ class AED:
         )
 
 
+class Path:
+    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment], aed: AED = None):
+        self.source = source
+        self.target = target
+        self.streets = streets
+        self.length = sum([s.length for s in streets])
+        self.aed = aed
+
+    def __add__(self, p):
+        source = self.source
+        target = p.target
+        path = self.streets + p.streets
+        return Path(source=source, target=target, streets=path)
+
+    def __repr__(self) -> str:
+        rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
+        for street in self.streets:
+            rep += f"{street}\n"
+        return rep
+
+    def is_aed_path(self):
+        return True if isinstance(self.aed, AED) else False
+
+    def geojson(self, style={}):
+        return [street.geojson(style=style) for street in self.streets]
+
+
 class Runner:
     id_iter = itertools.count(1)
 
@@ -209,3 +236,4 @@ class Patient:
             geometry=geojson.Point((location.longitude, location.latitude)),
             properties=properties
         )
+
