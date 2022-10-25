@@ -1,9 +1,11 @@
 import geojson
 import itertools
 import random
+import numpy as np
 from math import ceil
 from enum import Enum
 from neo4j import Record
+from datetime import datetime
 
 
 _TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
@@ -241,3 +243,29 @@ class Patient:
             properties=properties
         )
 
+
+class Task:
+    def __init__(
+        self,
+        paths: list[tuple[Runner, Path, list[Path]]],
+        time: datetime
+    ):
+        self.count = 20
+        self.runner_ids = np.empty(self.count, dtype=np.int32)
+        self.patient_paths = []
+        self.patient_times = np.empty(self.count, dtype=np.int32)
+        self.aed_paths = []
+        self.aed_times = np.empty(self.count, dtype=np.int32)
+
+        i = 0
+        for runner, p_path, a_paths in paths:
+            self.runner_ids[i] = runner.id-1
+            self.patient_times[i] = p_path.time_to_cover(runner.speed)
+            self.patient_paths.append(p_path)
+            
+            # Neural network can only take one aed path as of right now
+            self.aed_times[i] = a_paths[0].time_to_cover(runner.speed)
+            self.aed_paths.append(a_paths[0])
+            i += 1
+
+        self.time = ceil(time.timestamp())
