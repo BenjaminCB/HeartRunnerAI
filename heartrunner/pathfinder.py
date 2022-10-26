@@ -1,7 +1,7 @@
 import networkx as nx
 from .types import *
 from geopy.distance import great_circle
-
+from neo4j import Result
 
 def heuristic(node_a: Intersection, node_b: Intersection):
     return great_circle(node_a.coords(), node_b.coords()).meters
@@ -9,7 +9,10 @@ def heuristic(node_a: Intersection, node_b: Intersection):
 
 class Pathfinder:
 
-    def __init__(self, patient: Patient):
+    def __init__(
+        self, 
+        patient: Patient 
+    ):
         self.paths: list[tuple[Runner, Path, list[Path]]] = []
         self._patient = patient
         self._graph = nx.Graph()
@@ -17,6 +20,48 @@ class Pathfinder:
         self._edges: dict[int, Streetsegment] = {}
         self._aeds: dict[Intersection, list[AED]] = {}
         self._runners: dict[Intersection, list[Runner]] = {}
+
+
+    @staticmethod
+    def from_neo4j(result: Result, patient: Patient):
+        pf = Pathfinder(patient)
+        for record in result:
+            # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
+            i1 = Intersection(
+                id=record['i1']['id'], 
+                coords=(record['i1']['latitude'], record['i1']['longitude'])
+            )
+
+            i2 = Intersection(
+                id=record['i2']['id'], 
+                coords=(record['i2']['latitude'], record['i2']['longitude'])
+            )
+
+            pf.add_edge(edge=Streetsegment(
+                id=record['s']['id'],
+                source=i1,
+                target=i2,
+                length=record['s']['length'],
+                geometry=record['s']['geometry']
+            ))
+
+            # OPTIONAL MATCH (i1)--(a:AED)
+            if record['a']:
+                pf.add_aed(AED(
+                    id=record['a']['id'],
+                    intersection_id=i1.id,
+                    time_range=(record['a']['open_hour'], record['a']['close_hour']),
+                    in_use=record['a']['in_use']
+                ))
+
+            # OPTIONAL MATCH (i1)--(r:Runner)
+            if record['r']:
+                pf.add_aed(Runner(
+                    id=record['r']['id'], 
+                    speed=record['r']['speed'], 
+                    intersection_id=i1.id
+                ))            
+        return pf
 
     def add_node(self, node: Intersection):
         self._nodes[node.id] = node

@@ -31,8 +31,9 @@ def parse_geojson(streets_path, aeds_path):
         open(streets_path, "r") as streets_file,
         open(aeds_path, "r") as aeds_file
     ):
-        graph = Pathfinder()
-        intersections = {}
+        intersections: dict[tuple, Intersection] = {}
+        streetsegments: list[Streetsegment] = []
+        aeds: list[AED] = []
         aed_features = geojson.load(aeds_file)["features"]
         street_features = geojson.load(streets_file)["features"]
 
@@ -54,15 +55,12 @@ def parse_geojson(streets_path, aeds_path):
             if tail_coords not in intersections:
                 intersections[tail_coords] = Intersection(coords=tail_coords)
 
-            head = intersections[head_coords]
-            tail = intersections[tail_coords]
-            street = Streetsegment(
-                source=head,
-                target=tail,
+            streetsegments.append(Streetsegment(
+                source=intersections[head_coords],
+                target=intersections[tail_coords],
                 length=length,
                 geometry=feature["geometry"]
-            )
-            graph.add_edge(edge=street)
+            ))
 
         n = 1
         aed_count = len(aed_features)
@@ -81,10 +79,7 @@ def parse_geojson(streets_path, aeds_path):
             else:
                 closest_inter = intersections[aed_coords]
 
-            aed = AED(
-                intersection_id=closest_inter.id
-            )
-            graph.add_aed(closest_inter, aed)
+            aeds.append(AED(intersection_id=closest_inter.id))
 
     with (
         open(INTERSECTIONS_CSV_PATH, "w+") as intersections_file,
@@ -96,7 +91,7 @@ def parse_geojson(streets_path, aeds_path):
         aeds_writer = csv.writer(aeds_file)
 
         intersections_writer.writerow(INTERSECTIONS_CSV_HEADER)
-        for intersection in graph.get_nodes():
+        for intersection in intersections.values():
             intersections_writer.writerow([
                 intersection.id,
                 intersection.latitude,
@@ -104,7 +99,7 @@ def parse_geojson(streets_path, aeds_path):
             ])
 
         streets_writer.writerow(STREETS_CSV_HEADER)
-        for street in graph.get_edges():
+        for street in streetsegments:
             streets_writer.writerow([
                 street.id,
                 street.source.id,
@@ -114,7 +109,7 @@ def parse_geojson(streets_path, aeds_path):
             ])
 
         aeds_writer.writerow(AEDS_CSV_HEADER)
-        for aed in graph.get_aeds():
+        for aed in aeds:
             aeds_writer.writerow([
                 aed.id,
                 aed.intersection_id,
@@ -123,4 +118,13 @@ def parse_geojson(streets_path, aeds_path):
                 aed.close_hour
             ])
 
-    return graph
+
+def coord_limits(origin: tuple, range: float):
+    dist_limit = great_circle(kilometers=range)
+
+    north_limit = dist_limit.destination(origin, 0).latitude
+    south_limit = dist_limit.destination(origin, 180).latitude
+    east_limit = dist_limit.destination(origin, 90).longitude
+    west_limit = dist_limit.destination(origin, 270).longitude
+
+    return (north_limit, south_limit, east_limit, west_limit)

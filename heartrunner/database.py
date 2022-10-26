@@ -1,11 +1,11 @@
-import logging
 import os
+import logging
 from dotenv import load_dotenv
 from random import sample
-from neo4j import GraphDatabase, Transaction, Driver
-from geopy.distance import great_circle
+from neo4j import GraphDatabase, Driver
 from .types import *
 from .pathfinder import Pathfinder
+from .util import coord_limits
 
 
 class HeartrunnerDB:
@@ -33,7 +33,7 @@ class HeartrunnerDB:
             HeartrunnerDB._default = HeartrunnerDB(uri, user, password)
         return HeartrunnerDB._default
 
-    def __batch_query(self, query: str, batch: list[dict]):
+    def _batch_query(self, query: str, batch: list[dict]):
         with self.driver.session(database="neo4j") as session:
             try:
                 result = session.run(query, batch=batch).consume()
@@ -59,11 +59,12 @@ class HeartrunnerDB:
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (r:Runner {id: row.id, speed: row.speed})-[:LocatedAt]->(i) "
         )
-        self.__batch_query(query, batch)
+        self._batch_query(query, batch)
         return runners
 
     def generate_patients(self, n=1):
         count = self.count_nodes(NodeType.Intersection)
+        print(count)
         n = count if n > count else n
 
         patients: list[Patient] = []
@@ -79,7 +80,7 @@ class HeartrunnerDB:
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (p:Patient {id: row.id})-[:LocatedAt]->(i) "
         )
-        self.__batch_query(query, batch)
+        self._batch_query(query, batch)
         return patients
 
     def get_node(self, node_type: NodeType, node_id: int):
@@ -89,15 +90,15 @@ class HeartrunnerDB:
                     f"MATCH (n:{node_type.name})--(m) WHERE n.id = {node_id} RETURN n, m").peek()
                 match node_type:
                     case NodeType.Patient:
-                        return Patient.from_record(result)
+                        return Patient.from_neo4j(result)
                     case NodeType.Runner:
-                        return Runner.from_record(result)
+                        return Runner.from_neo4j(result)
                     case NodeType.AED:
-                        return AED.from_record(result)
+                        return AED.from_neo4j(result)
                     case NodeType.Intersection:
-                        return Intersection.from_record(result)
+                        return Intersection.from_neo4j(result)
             except:
-                logging.exception(" Error while executing get_node")
+                logging.exception(f" Error while executing get_node: node_type={node_type.name}, node_id={node_id}")
                 return None
 
     def get_nodes(self, node_type: NodeType, limit=0):
@@ -111,13 +112,13 @@ class HeartrunnerDB:
                 for record in result:
                     match node_type:
                         case NodeType.Patient:
-                            nodes.append(Patient.from_record(record))
+                            nodes.append(Patient.from_neo4j(record))
                         case NodeType.Runner:
-                            nodes.append(Runner.from_record(record))
+                            nodes.append(Runner.from_neo4j(record))
                         case NodeType.AED:
-                            nodes.append(AED.from_record(record))
+                            nodes.append(AED.from_neo4j(record))
                         case NodeType.Intersection:
-                            nodes.append(Intersection.from_record(record))
+                            nodes.append(Intersection.from_neo4j(record))
                 return nodes
             except:
                 logging.exception(" Error while executing get_nodes")
@@ -145,76 +146,18 @@ class HeartrunnerDB:
 
     def get_pathfinder(self, patient: Patient, kilometers=1):
         with self.driver.session(database="neo4j") as session:
+            patient_coords = self.get_node(NodeType.Intersection, patient.intersection_id).coords()
+            limits = coord_limits(origin=patient_coords, range=kilometers)
             try:
-                location = self.get_node(
-                    NodeType.Intersection, patient.intersection_id).coords()
-                dist_limit = great_circle(kilometers=kilometers)
-                north_limit = tuple(dist_limit.destination(location, 0))
-                south_limit = tuple(dist_limit.destination(location, 180))
-                east_limit = tuple(dist_limit.destination(location, 90))
-                west_limit = tuple(dist_limit.destination(location, 270))
-                limits = (north_limit[0], south_limit[0],
-                          east_limit[1], west_limit[1])
-
-                pf = session.execute_read(
-                    self.__get_pathfinder, limits, patient)
-                return pf
-            except:
-                logging.exception(" Error while executing get_subgraph")
-                return None
-
-    @staticmethod
-    def __get_pathfinder(tx: Transaction, limits: tuple, patient: Patient):
-        query = (
-            "MATCH (i1:Intersection)-[s:Streetsegment]-(i2:Intersection) "
-            f"WHERE i1.latitude <= {limits[0]} AND i1.latitude >= {limits[1]} AND i1.longitude <= {limits[2]} AND i1.longitude >= {limits[3]} "
-            "OPTIONAL MATCH (i1)-[:LocatedAt]-(a:AED) "
-            "OPTIONAL MATCH (i1)-[:LocatedAt]-(r:Runner) "
-            "RETURN i1, i2, s, a, r "
-        )
-        result = tx.run(query)
-        pf = Pathfinder(patient)
-        # Parse query response into a pathfinder instance
-        for record in result:
-            # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
-            i1_id = record['i1']['id']
-            i1_coord = (record['i1']['latitude'], record['i1']['longitude'])
-            i1 = Intersection(id=i1_id, coords=i1_coord)
-
-            i2_id = record['i2']['id']
-            i2_coord = (record['i2']['latitude'], record['i2']['longitude'])
-            i2 = Intersection(id=i2_id, coords=i2_coord)
-
-            s_id = record['s']['id']
-            s_length = record['s']['length']
-            s_geometry = record['s']['geometry']
-            s = Streetsegment(
-                id=s_id,
-                source=i1,
-                target=i2,
-                length=s_length,
-                geometry=s_geometry
-            )
-            pf.add_edge(edge=s)
-
-            # OPTIONAL MATCH (i1)--(a:AED)
-            if record['a']:
-                a_id = record['a']['id']
-                a_time_range = (record['a']['open_hour'],
-                                record['a']['close_hour'])
-                a_in_use = record['a']['in_use']
-                a = AED(
-                    id=a_id,
-                    intersection_id=i1_id,
-                    time_range=a_time_range,
-                    in_use=a_in_use
+                query = (
+                    "MATCH (i1:Intersection)-[s:Streetsegment]-(i2:Intersection) "
+                    f"WHERE i1.latitude <= {limits[0]} AND i1.latitude >= {limits[1]} AND i1.longitude <= {limits[2]} AND i1.longitude >= {limits[3]} "
+                    "OPTIONAL MATCH (i1)-[:LocatedAt]-(a:AED) "
+                    "OPTIONAL MATCH (i1)-[:LocatedAt]-(r:Runner) "
+                    "RETURN i1, i2, s, a, r "
                 )
-                pf.add_aed(aed=a)
-
-            # OPTIONAL MATCH (i1)--(r:Runner)
-            if record['r']:
-                r_id = record['r']['id']
-                speed = record['r']['speed']
-                r = Runner(id=r_id, speed=speed, intersection_id=i1_id)
-                pf.add_runner(runner=r)
-        return pf
+                result = session.run(query)
+                return Pathfinder.from_neo4j(result, patient)
+            except:
+                logging.exception(" Error while executing get_pathfinder")
+                return None

@@ -1,9 +1,13 @@
-from math import ceil
+import random
 import geojson
 import itertools
-import random
 from enum import Enum
+from math import ceil
 from neo4j import Record
+
+
+_TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
+_TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
 
 
 class NodeType(Enum):
@@ -11,10 +15,6 @@ class NodeType(Enum):
     AED = 2
     Runner = 3
     Patient = 4
-
-
-_TIMERANGES = [(0, 2359), (900, 1700), (600, 2300), (300, 1200), (2000, 400)]
-_TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
 
 
 class Intersection:
@@ -38,7 +38,7 @@ class Intersection:
         return f"Intersection({self.id})"
 
     @staticmethod
-    def from_record(record: Record):
+    def from_neo4j(record: Record):
         id = record['n']['id']
         lat = record['n']['latitude']
         lon = record['n']['longitude']
@@ -75,7 +75,7 @@ class Streetsegment:
         self.source = source
         self.target = target
         self.length = length
-        self.geometry = geojson.loads(geometry)
+        self.geometry = geojson.loads(geometry) if isinstance(geometry, str) else geometry
 
     def __hash__(self) -> int:
         return hash((self.id, self.source, self.target, self.length))
@@ -122,7 +122,7 @@ class AED:
         return f"A({self.id})"
 
     @staticmethod
-    def from_record(record: Record):
+    def from_neo4j(record: Record):
         id = record['n']['id']
         open_hour = record['n']['open_hour']
         close_hour = record['n']['close_hour']
@@ -163,7 +163,7 @@ class Runner:
         return f"R({self.id})"
 
     @staticmethod
-    def from_record(record: Record):
+    def from_neo4j(record: Record):
         id = record['n']['id']
         speed = record['n']['speed']
         intersection_id = record['m']['id']
@@ -194,7 +194,7 @@ class Patient:
         return f"P({self.id})"
 
     @staticmethod
-    def from_record(record: Record):
+    def from_neo4j(record: Record):
         id = record['n']['id']
         intersection_id = record['m']['id']
         return Patient(id=id, intersection_id=intersection_id)
