@@ -9,7 +9,8 @@ class NeuralNetwork:
         # l2 = tf.keras.layers.Dense(layers, activation='sigmoid')
         self.model = tf.keras.Sequential([
             tf.keras.layers.InputLayer(input_shape=(layers,)),
-            tf.keras.layers.Dense(layers, activation='relu')
+            tf.keras.layers.Dense(layers, activation='relu'),
+            tf.keras.layers.Dense(20)
         ])
         self.input_size = layers
         self.model.compile(
@@ -22,16 +23,14 @@ class NeuralNetwork:
     def predict(self, x: np.ndarray):
         x = x.reshape((1,self.input_size))
         prediction_each_neuron = self.model.predict(x)
-        prediction_each_neuron = np.array(prediction_each_neuron)
         pre_sorted = []
         
         # index each prediction
-        for i in range(0, len(prediction_each_neuron), 1):
-            for j in range(0, len(prediction_each_neuron[0]), 1):
-                pre_sorted.append((i, prediction_each_neuron[i][j]))
+        for i in range(0, len(prediction_each_neuron[0]), 1):
+            pre_sorted.append((i, prediction_each_neuron[0][i]))
 
         # sort by [( 2. , 1. )]
-        pre_sorted = sorted(sorted(pre_sorted, key=lambda x: x[1], reverse=True), key=lambda x: float(x[0]))
+        pre_sorted = sorted(pre_sorted, key=lambda x: x[1], reverse=True)
         return pre_sorted
 
     # the method should not mutate the current nn but instead return a new one

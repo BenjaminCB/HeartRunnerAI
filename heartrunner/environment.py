@@ -27,7 +27,8 @@ class Environment:
         prev_time = None
         for task in self.tasks:
             if prev_time:
-                self.state -= task.time-prev_time
+                self.state -= (task.time-prev_time)
+                self.state = self.state.clip(min=0)
             prev_time = task.time
             
             truncated_state = np.empty(task.count, dtype=np.int32)
@@ -52,7 +53,6 @@ class Environment:
 
             nn_input = np.concatenate((truncated_state, state_through_patient, state_through_aed), axis=None)
             nn_input = (nn_input - np.min(nn_input)) / (np.max(nn_input) - np.min(nn_input))
-
             prediction = self.nn.predict(nn_input)
 
             # update state
