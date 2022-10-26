@@ -1,5 +1,5 @@
 import networkx as nx
-from .types import *
+from heartrunner.types import *
 from geopy.distance import great_circle
 from neo4j import Result
 

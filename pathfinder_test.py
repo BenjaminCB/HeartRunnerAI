@@ -1,26 +1,23 @@
-import os
-from dotenv import load_dotenv
 from timeit import default_timer
 from heartrunner.types import NodeType
 from heartrunner.database import HeartrunnerDB
 
 if __name__ == "__main__":
-    load_dotenv('.env')
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USERNAME")
-    password = os.getenv("NEO4J_PASSWORD")
-    with HeartrunnerDB(uri, user, password) as db:
+    with HeartrunnerDB.default() as db:
+        db.delete_nodes(NodeType.Runner)
+        db.generate_runners(1000)
+        db.delete_nodes(NodeType.Patient)
         acc = 0
-        for i in range(10):
-            # db.delete_nodes(NodeType.Runner)
-            # db.generate_runners(1000)
+        acc_size = 0
+        i = 0
+        for patient in db.generate_patients(1000):
             time1 = default_timer()
-            db.delete_nodes(NodeType.Patient)
-            patients = db.generate_patients(10)
-            for patient in patients:
-                tasks = db.get_pathfinder(patient).compute_paths(n_runners=20, n_aeds=3)
-                
+            pf = db.get_pathfinder(patient)
+            pf.compute_paths(n_runners=20, n_aeds=3)
             time2 = default_timer()
             elapsed = time2-time1
+            size = len(pf.get_edges())+len(pf.get_nodes())
             acc += elapsed
-            print(f"{i+1:4} Elapsed: {elapsed:.6f} - Average: {acc/(i+1):.6f}")
+            acc_size += size
+            i += 1
+            print(f"{i:4} Elapsed: {elapsed:.6f} - Avg.: {acc/i:.6f} - Size: {size:6.0f} - Avg.: {acc_size/i:6.0f}")

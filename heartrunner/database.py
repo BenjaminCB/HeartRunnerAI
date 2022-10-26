@@ -3,9 +3,9 @@ import logging
 from dotenv import load_dotenv
 from random import sample
 from neo4j import GraphDatabase, Driver
-from .types import *
-from .pathfinder import Pathfinder
-from .util import coord_limits
+from heartrunner.types import *
+from heartrunner.pathfinder import Pathfinder
+from heartrunner.util import coord_limits
 
 
 class HeartrunnerDB:
@@ -64,7 +64,6 @@ class HeartrunnerDB:
 
     def generate_patients(self, n=1):
         count = self.count_nodes(NodeType.Intersection)
-        print(count)
         n = count if n > count else n
 
         patients: list[Patient] = []

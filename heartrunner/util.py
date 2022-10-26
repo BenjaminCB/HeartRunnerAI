@@ -3,8 +3,8 @@ import csv
 import geojson
 import geojson_length
 from geopy.distance import great_circle
-from .types import Intersection, Streetsegment, AED
-from .pathfinder import Pathfinder
+from heartrunner.types import Intersection, Streetsegment, AED
+
 
 INTERSECTIONS_CSV_HEADER = ["id", "latitude", "longitude"]
 INTERSECTIONS_CSV_PATH = "data/csv/intersections.csv"
