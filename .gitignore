@@ -2,5 +2,9 @@ __pycache__
 .requirements.txt
 .env
 
+# pytest
+.pytest_cache
+.coverage
+
 # OSX
 .DS_STORE
