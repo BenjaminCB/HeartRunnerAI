@@ -18,7 +18,7 @@ _TIMERANGES_PROB = [0.4, 0.3, 0.2, 0.05, 0.05]
 
 
 class Intersection:
-    id_iter = itertools.count(1)
+    id_iter = itertools.count(0)
 
     def __init__(self, coords: tuple, id=None):
         self.id = next(self.id_iter) if id == None else id
@@ -61,7 +61,7 @@ class Intersection:
 
 
 class Streetsegment:
-    id_iter = itertools.count(1)
+    id_iter = itertools.count(0)
 
     def __init__(
         self,
@@ -108,7 +108,7 @@ class Streetsegment:
 
 
 class AED:
-    id_iter = itertools.count(1)
+    id_iter = itertools.count(0)
 
     def __init__(self, id=None, intersection_id=None, time_range=None, in_use='false'):
         self.id = next(self.id_iter) if id == None else id
@@ -152,7 +152,7 @@ class AED:
 
 
 class Runner:
-    id_iter = itertools.count(1)
+    id_iter = itertools.count(0)
 
     def __init__(self, id=None, speed=None, intersection_id=None):
         self.id = next(self.id_iter) if id == None else id
@@ -184,7 +184,7 @@ class Runner:
 
 
 class Patient:
-    id_iter = itertools.count(1)
+    id_iter = itertools.count(0)
 
     def __init__(self, id=None, intersection_id=None):
         self.id = next(self.id_iter) if id == None else id
