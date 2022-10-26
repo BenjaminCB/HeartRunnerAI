@@ -7,54 +7,10 @@ def heuristic(node_a: Intersection, node_b: Intersection):
     return great_circle(node_a.coords(), node_b.coords()).meters
 
 
-class Path:
-    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment], aed: AED = None):
-        self.source = source
-        self.target = target
-        self.streets = streets
-        self.length = sum([s.length for s in streets])
-        self.aed = aed
-
-    def __add__(self, p):
-        source = self.source
-        target = p.target
-        path = self.streets + p.streets
-        return Path(source=source, target=target, streets=path)
-
-    def __repr__(self) -> str:
-        rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
-        for street in self.streets:
-            rep += f"{street}\n"
-        return rep
-
-    def is_aed_path(self):
-        return True if isinstance(self.aed, AED) else False
-
-    def geojson(self, style={}):
-        return [street.geojson(style=style) for street in self.streets]
-
-
-class Task:
-    def __init__(
-        self, 
-        runner: Runner, 
-        patient_path: Path, 
-        aed_paths: list[Path]
-    ):
-        self.runner = runner
-        self.patient_path = patient_path
-        self.patient_latency = self._latency(patient_path)
-        self.aed_paths = aed_paths
-        self.aed_latencies = [self._latency(aed_path) for aed_path in aed_paths]
-
-    def _latency(self, path: Path):
-        return path.length/self.runner.speed
-
-
 class Pathfinder:
 
     def __init__(self, patient: Patient):
-        self.tasks: list[Task] = []
+        self.paths: list[tuple[Runner, Path, list[Path]]] = []
         self._patient = patient
         self._graph = nx.Graph()
         self._nodes: dict[int, Intersection] = {}
@@ -111,7 +67,7 @@ class Pathfinder:
     def get_runners(self):
         return [runner for runners in self._runners.values() for runner in runners]
 
-    def calculate_tasks(self, n_runners: int = None, n_aeds: int = None):
+    def compute_paths(self, n_runners: int = None, n_aeds: int = None):
         def to_path(nx_path: list[Intersection], aed=None):
             source = nx_path[0]
             target = nx_path[-1]
@@ -122,8 +78,8 @@ class Pathfinder:
                     edges.append(self.get_edge(edge_id))
             return Path(source=source, target=target, streets=edges, aed=aed)
 
-        # Remove previous tasks, if any
-        self.tasks = []
+        # Remove any previous paths
+        self.paths = []
 
         # Get target intersection
         target = self.get_node(self._patient.intersection_id)
@@ -162,10 +118,10 @@ class Pathfinder:
                     aed_path.aed = aed
                     aed_paths.append(aed_path)
                     a_i += 1
-                
+
             for runner in self._runners[r_source]:
                 if r_i >= n_runners: break
-                self.tasks.append(Task(runner, patient_path, aed_paths))
+                self.paths.append((runner, patient_path, aed_paths))
                 r_i += 1
         
-        return self.tasks
+        return self.paths

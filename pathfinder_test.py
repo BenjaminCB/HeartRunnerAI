@@ -18,7 +18,7 @@ if __name__ == "__main__":
             db.delete_nodes(NodeType.Patient)
             patients = db.generate_patients(10)
             for patient in patients:
-                tasks = db.get_pathfinder(patient).calculate_tasks(n_runners=20, n_aeds=3)
+                tasks = db.get_pathfinder(patient).compute_paths(n_runners=20, n_aeds=3)
                 
             time2 = default_timer()
             elapsed = time2-time1
