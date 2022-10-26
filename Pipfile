@@ -4,15 +4,20 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-networkx = "*"
-
-[dev-packages]
-autopep8 = "*"
-python-dotenv = "*"
 neo4j = "*"
 geopy = "*"
 geojson = "*"
 geojson-length = "*"
+python-dotenv = "*"
+networkx = "*"
+numpy = "*"
+tensorflow = {version = "*", sys_platform = "!= 'darwin'"}
+tensorflow-macos = {version = "*", sys_platform = "== 'darwin'"}
+tensorflow-metal = {version = "*", sys_platform = "== 'darwin'"}
+
+[dev-packages]
+autopep8 = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.10"
