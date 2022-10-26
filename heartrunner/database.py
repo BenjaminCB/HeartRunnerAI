@@ -1,6 +1,8 @@
 import logging
+import os
+from dotenv import load_dotenv
 from random import sample
-from neo4j import GraphDatabase, Transaction
+from neo4j import GraphDatabase, Transaction, Driver
 from geopy.distance import great_circle
 from .types import *
 from .pathfinder import Pathfinder
@@ -9,13 +11,27 @@ from .pathfinder import Pathfinder
 class HeartrunnerDB:
 
     def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.uri = uri
+        self.auth = (user, password)
+        self.driver: Driver
 
     def __enter__(self):
+        self.driver = GraphDatabase.driver(self.uri, auth=self.auth)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.driver.close()
+
+    _default = None
+    @staticmethod
+    def default():
+        if not HeartrunnerDB._default:
+            load_dotenv('.env')
+            uri = os.getenv("NEO4J_URI")
+            user = os.getenv("NEO4J_USERNAME")
+            password = os.getenv("NEO4J_PASSWORD")
+            HeartrunnerDB._default = HeartrunnerDB(uri, user, password)
+        return HeartrunnerDB._default
 
     def __batch_query(self, query: str, batch: list[dict]):
         with self.driver.session(database="neo4j") as session:
