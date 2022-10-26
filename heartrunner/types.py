@@ -213,12 +213,12 @@ class Patient:
 
 
 class Path:
-    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment], aed: AED = None):
+    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment]):
         self.source = source
         self.target = target
         self.streets = streets
         self.length = sum([s.length for s in streets])
-        self.aed = aed
+        self.aed: AED = None
 
     def __add__(self, p):
         source = self.source

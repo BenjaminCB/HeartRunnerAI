@@ -68,7 +68,7 @@ class Pathfinder:
         return [runner for runners in self._runners.values() for runner in runners]
 
     def compute_paths(self, n_runners: int = None, n_aeds: int = None):
-        def to_path(nx_path: list[Intersection], aed=None):
+        def to_path(nx_path: list[Intersection]):
             source = nx_path[0]
             target = nx_path[-1]
             edges = []
@@ -76,7 +76,7 @@ class Pathfinder:
                 for u, v in zip(nx_path, nx_path[1:]):
                     edge_id = self._graph[u][v]["id"]
                     edges.append(self.get_edge(edge_id))
-            return Path(source=source, target=target, streets=edges, aed=aed)
+            return Path(source=source, target=target, streets=edges)
 
         # Remove any previous paths
         self.paths = []
