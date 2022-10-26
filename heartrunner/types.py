@@ -1,3 +1,4 @@
+from math import ceil
 import geojson
 import itertools
 import random
@@ -150,33 +151,6 @@ class AED:
         )
 
 
-class Path:
-    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment], aed: AED = None):
-        self.source = source
-        self.target = target
-        self.streets = streets
-        self.length = sum([s.length for s in streets])
-        self.aed = aed
-
-    def __add__(self, p):
-        source = self.source
-        target = p.target
-        path = self.streets + p.streets
-        return Path(source=source, target=target, streets=path)
-
-    def __repr__(self) -> str:
-        rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
-        for street in self.streets:
-            rep += f"{street}\n"
-        return rep
-
-    def is_aed_path(self):
-        return True if isinstance(self.aed, AED) else False
-
-    def geojson(self, style={}):
-        return [street.geojson(style=style) for street in self.streets]
-
-
 class Runner:
     id_iter = itertools.count(1)
 
@@ -236,3 +210,33 @@ class Patient:
             geometry=geojson.Point((location.longitude, location.latitude)),
             properties=properties
         )
+
+
+class Path:
+    def __init__(self, source: Intersection, target: Intersection, streets: list[Streetsegment], aed: AED = None):
+        self.source = source
+        self.target = target
+        self.streets = streets
+        self.length = sum([s.length for s in streets])
+        self.aed = aed
+
+    def __add__(self, p):
+        source = self.source
+        target = p.target
+        path = self.streets + p.streets
+        return Path(source=source, target=target, streets=path)
+
+    def __repr__(self) -> str:
+        rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
+        for street in self.streets:
+            rep += f"{street}\n"
+        return rep
+
+    def eta(self, runner: Runner):
+        return ceil(self.length/runner.speed)
+
+    def is_aed_path(self):
+        return True if isinstance(self.aed, AED) else False
+
+    def geojson(self, style={}):
+        return [street.geojson(style=style) for street in self.streets]
