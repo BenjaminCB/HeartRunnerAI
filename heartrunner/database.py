@@ -85,8 +85,12 @@ class HeartrunnerDB:
     def get_node(self, node_type: NodeType, node_id: int):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(
-                    f"MATCH (n:{node_type.name})--(m) WHERE n.id = {node_id} RETURN n, m").peek()
+                query = (
+                    f"MATCH (n:{node_type.name}) WHERE n.id = {node_id} "
+                    f"OPTIONAL MATCH (n)-[:LocatedAt]-(m:Intersection) "
+                    "RETURN n, m "
+                )
+                result = session.run(query).peek()
                 match node_type:
                     case NodeType.Patient:
                         return Patient.from_neo4j(result)
@@ -100,12 +104,17 @@ class HeartrunnerDB:
                 logging.exception(f" Error while executing get_node: node_type={node_type.name}, node_id={node_id}")
                 return None
 
-    def get_nodes(self, node_type: NodeType, limit=0):
+    def get_nodes(self, node_type: NodeType, limit=None):
         with self.driver.session(database="neo4j") as session:
             try:
-                query = f"MATCH (n:{node_type.name})--(m) RETURN n, m"
-                if limit > 0:
-                    query += f" LIMIT {limit}"
+                query = (
+                    f"MATCH (n:{node_type.name}) "
+                    f"OPTIONAL MATCH (n)-[:LocatedAt]-(m:Intersection) "
+                    "RETURN n, m "
+                )
+                if limit:
+                    query += f"LIMIT {limit} "
+                
                 result = session.run(query)
                 nodes = []
                 for record in result:
