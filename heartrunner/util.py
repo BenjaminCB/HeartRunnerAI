@@ -79,7 +79,7 @@ def parse_geojson(streets_path, aeds_path):
             else:
                 closest_inter = intersections[aed_coords]
 
-            aeds.append(AED(intersection_id=closest_inter.id))
+            aeds.append(AED(intersection=closest_inter))
 
     with (
         open(INTERSECTIONS_CSV_PATH, "w+") as intersections_file,
@@ -112,7 +112,7 @@ def parse_geojson(streets_path, aeds_path):
         for aed in aeds:
             aeds_writer.writerow([
                 aed.id,
-                aed.intersection_id,
+                aed.intersection.id,
                 aed.in_use,
                 aed.open_hour,
                 aed.close_hour

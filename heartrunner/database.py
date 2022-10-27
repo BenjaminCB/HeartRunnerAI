@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Type
 from dotenv import load_dotenv
 from random import sample
 from neo4j import GraphDatabase, Driver
@@ -42,73 +43,42 @@ class HeartrunnerDB:
                 logging.exception(" Error while executing __batch_query")
                 return None
 
-    def generate_runners(self, n=1):
-        count = self.count_nodes(NodeType.Intersection)
-        n = count if n > count else n
-        
-        runners: list[Runner] = []
-        batch = []
-        ids = sample(range(count), n)
-        for id in ids:
-            runner = Runner(intersection_id=id)
-            runners.append(runner)
-            batch.append(vars(runner))
+    def generate_entity(self, entity_cls: Type[Entity], n=1):
+        if entity_cls not in [Runner, Patient]:
+            raise ValueError(f"{entity_cls.__name__} entities cannot be generated.")
 
-        query = (
-            "UNWIND $batch AS row "
-            "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
-            "MERGE (r:Runner {id: row.id, speed: row.speed})-[:LocatedAt]->(i) "
-        )
-        self._batch_query(query, batch)
-        return runners
-
-    def generate_patients(self, n=1):
-        count = self.count_nodes(NodeType.Intersection)
+        count = self.count_nodes(Intersection)
         n = count if n > count else n
 
-        patients: list[Patient] = []
+        entities = []
         batch = []
-        ids = sample(range(count), n)
-        for id in ids:
-            patient = Patient(intersection_id=id)
-            patients.append(patient)
-            batch.append(vars(patient))
+        id_sample = sample(range(count), n)
+        for location in self.get_nodes_by_id(Intersection, id_sample):
+            entity = entity_cls(intersection=location)
+            entities.append(entity)
+            batch.append(entity.to_neo4j())
+        self._batch_query(query=entity_cls.batch_merge_query, batch=batch)
+        return entities
 
-        query = (
-            "UNWIND $batch AS row "
-            "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
-            "MERGE (p:Patient {id: row.id})-[:LocatedAt]->(i) "
-        )
-        self._batch_query(query, batch)
-        return patients
-
-    def get_node(self, node_type: NodeType, node_id: int):
+    def get_node(self, node_cls: Type[Entity], node_id: int) -> Intersection | AED | Runner | Patient:
         with self.driver.session(database="neo4j") as session:
             try:
                 query = (
-                    f"MATCH (n:{node_type.name}) WHERE n.id = {node_id} "
+                    f"MATCH (n:{node_cls.label}) WHERE n.id = {node_id} "
                     f"OPTIONAL MATCH (n)-[:LocatedAt]-(m:Intersection) "
                     "RETURN n, m "
                 )
-                result = session.run(query).peek()
-                match node_type:
-                    case NodeType.Patient:
-                        return Patient.from_neo4j(result)
-                    case NodeType.Runner:
-                        return Runner.from_neo4j(result)
-                    case NodeType.AED:
-                        return AED.from_neo4j(result)
-                    case NodeType.Intersection:
-                        return Intersection.from_neo4j(result)
+                record = session.run(query).peek()
+                return node_cls.from_neo4j(record, key='n', location_key='m')
             except:
-                logging.exception(f" Error while executing get_node: node_type={node_type.name}, node_id={node_id}")
+                logging.exception(f" Error while executing get_node: node_type={node_cls.label}, node_id={node_id}")
                 return None
 
-    def get_nodes(self, node_type: NodeType, limit=None):
+    def get_nodes(self, node_cls: Type[Entity], limit=None) -> list[Intersection | AED | Runner | Patient]:
         with self.driver.session(database="neo4j") as session:
             try:
                 query = (
-                    f"MATCH (n:{node_type.name}) "
+                    f"MATCH (n:{node_cls.label}) "
                     f"OPTIONAL MATCH (n)-[:LocatedAt]-(m:Intersection) "
                     "RETURN n, m "
                 )
@@ -116,37 +86,38 @@ class HeartrunnerDB:
                     query += f"LIMIT {limit} "
                 
                 result = session.run(query)
-                nodes = []
-                for record in result:
-                    match node_type:
-                        case NodeType.Patient:
-                            nodes.append(Patient.from_neo4j(record))
-                        case NodeType.Runner:
-                            nodes.append(Runner.from_neo4j(record))
-                        case NodeType.AED:
-                            nodes.append(AED.from_neo4j(record))
-                        case NodeType.Intersection:
-                            nodes.append(Intersection.from_neo4j(record))
-                return nodes
+                return [node_cls.from_neo4j(record, key='n', location_key='m') for record in result]
             except:
                 logging.exception(" Error while executing get_nodes")
                 return None
 
-    def delete_nodes(self, node_type: NodeType):
+    def get_nodes_by_id(self, node_cls: Type[Entity], ids: list[int]):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(
-                    f"MATCH (n:{node_type.name}) DETACH DELETE n").consume()
+                query = (
+                    f"MATCH (n:{node_cls.label}) WHERE n.id IN {ids} "
+                    f"OPTIONAL MATCH (n)-[:LocatedAt]-(m:Intersection) "
+                    "RETURN n, m "
+                )
+                result = session.run(query)
+                return [node_cls.from_neo4j(record, key='n', location_key='m') for record in result]
+            except:
+                logging.exception(" Error while executing get_nodes_by_id")
+                return None
+
+    def delete_nodes(self, node_cls: Type[Entity]):
+        with self.driver.session(database="neo4j") as session:
+            try:
+                result = session.run(f"MATCH (n:{node_cls.label}) DETACH DELETE n").consume()
                 return result
             except:
                 logging.exception(" Error while executing delete_nodes")
                 return None
 
-    def count_nodes(self, node_type: NodeType):
+    def count_nodes(self, node_cls: Type[Entity]):
         with self.driver.session(database="neo4j") as session:
             try:
-                result = session.run(
-                    f"MATCH (n:{node_type.name}) RETURN count(n)").single()
+                result = session.run(f"MATCH (n:{node_cls.label}) RETURN count(n)").single()
                 return result['count(n)']
             except:
                 logging.exception(" Error while executing count_nodes")
@@ -154,7 +125,7 @@ class HeartrunnerDB:
 
     def get_pathfinder(self, patient: Patient, kilometers=1):
         with self.driver.session(database="neo4j") as session:
-            patient_coords = self.get_node(NodeType.Intersection, patient.intersection_id).coords()
+            patient_coords = self.get_node(Intersection, patient.intersection.id).coords()
             limits = coord_limits(origin=patient_coords, range=kilometers)
             try:
                 query = (
@@ -165,7 +136,19 @@ class HeartrunnerDB:
                     "RETURN i1, i2, s, a, r "
                 )
                 result = session.run(query)
-                return Pathfinder.from_neo4j(result, patient)
+                pf = Pathfinder(patient)
+                for record in result:
+                    # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
+                    pf.add_edge(edge=Streetsegment.from_neo4j(record, key='s', head_key='i1', tail_key='i2'))
+                    
+                    # OPTIONAL MATCH (i1)--(a:AED)
+                    if record['a']:
+                        pf.add_aed(aed=AED.from_neo4j(record, key='a', location_key='i1'))
+
+                    # OPTIONAL MATCH (i1)--(r:Runner)      
+                    if record['r']:
+                        pf.add_runner(runner=Runner.from_neo4j(record, key='r', location_key='i1'))
+                return pf
             except:
                 logging.exception(" Error while executing get_pathfinder")
                 return None

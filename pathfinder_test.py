@@ -1,16 +1,16 @@
 from timeit import default_timer
-from heartrunner.types import NodeType
+from heartrunner.types import AED, Intersection, Runner, Patient
 from heartrunner.database import HeartrunnerDB
 
 if __name__ == "__main__":
     with HeartrunnerDB.default() as db:
-        db.delete_nodes(NodeType.Runner)
-        db.generate_runners(1000)
-        db.delete_nodes(NodeType.Patient)
+        db.delete_nodes(Runner)
+        db.generate_entity(Runner, 1000)
+        db.delete_nodes(Patient)
         acc = 0
         acc_size = 0
         i = 0
-        for patient in db.generate_patients(1000):
+        for patient in db.generate_entity(Patient, 1000):
             time1 = default_timer()
             pf = db.get_pathfinder(patient)
             pf.compute_paths(n_runners=20, n_aeds=3)

@@ -21,48 +21,6 @@ class Pathfinder:
         self._aeds: dict[Intersection, list[AED]] = {}
         self._runners: dict[Intersection, list[Runner]] = {}
 
-
-    @staticmethod
-    def from_neo4j(result: Result, patient: Patient):
-        pf = Pathfinder(patient)
-        for record in result:
-            # MATCH (i1)-[s:Streetsegment]-(i2:Intersection)
-            i1 = Intersection(
-                id=record['i1']['id'], 
-                coords=(record['i1']['latitude'], record['i1']['longitude'])
-            )
-
-            i2 = Intersection(
-                id=record['i2']['id'], 
-                coords=(record['i2']['latitude'], record['i2']['longitude'])
-            )
-
-            pf.add_edge(edge=Streetsegment(
-                id=record['s']['id'],
-                source=i1,
-                target=i2,
-                length=record['s']['length'],
-                geometry=record['s']['geometry']
-            ))
-
-            # OPTIONAL MATCH (i1)--(a:AED)
-            if record['a']:
-                pf.add_aed(AED(
-                    id=record['a']['id'],
-                    intersection_id=i1.id,
-                    time_range=(record['a']['open_hour'], record['a']['close_hour']),
-                    in_use=record['a']['in_use']
-                ))
-
-            # OPTIONAL MATCH (i1)--(r:Runner)
-            if record['r']:
-                pf.add_aed(Runner(
-                    id=record['r']['id'], 
-                    speed=record['r']['speed'], 
-                    intersection_id=i1.id
-                ))            
-        return pf
-
     def add_node(self, node: Intersection):
         self._nodes[node.id] = node
         self._graph.add_node(node)
@@ -89,25 +47,19 @@ class Pathfinder:
         return list(self._edges.values())
 
     def add_aed(self, aed: AED):
-        location = self.get_node(aed.intersection_id)
-        if not location: return
-
-        if location not in self._aeds:
-            self._aeds[location] = [aed]
+        if aed.intersection not in self._aeds:
+            self._aeds[aed.intersection] = [aed]
         else:
-            self._aeds[location].append(aed)
+            self._aeds[aed.intersection].append(aed)
 
     def get_aeds(self):
         return [aed for aeds in self._aeds.values() for aed in aeds]
 
     def add_runner(self, runner: Runner):
-        location = self.get_node(runner.intersection_id)
-        if not location: return
-
-        if location not in self._runners:
-            self._runners[location] = [runner]
+        if runner.intersection not in self._runners:
+            self._runners[runner.intersection] = [runner]
         else:
-            self._runners[location].append(runner)
+            self._runners[runner.intersection].append(runner)
 
     def get_runners(self):
         return [runner for runners in self._runners.values() for runner in runners]
@@ -127,7 +79,7 @@ class Pathfinder:
         self.paths = []
 
         # Get target intersection
-        target = self.get_node(self._patient.intersection_id)
+        target = self.get_node(self._patient.intersection.id)
         
         # Limit amount of runner/aed paths to find (default is no limit)
         a_limit = isinstance(n_aeds, int)
