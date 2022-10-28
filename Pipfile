@@ -14,6 +14,7 @@ numpy = "*"
 tensorflow = {version = "*", sys_platform = "!= 'darwin'"}
 tensorflow-macos = {version = "*", sys_platform = "== 'darwin'"}
 tensorflow-metal = {version = "*", sys_platform = "== 'darwin'"}
+joblib = "*"
 
 [dev-packages]
 autopep8 = "*"

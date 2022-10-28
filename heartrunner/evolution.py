@@ -4,6 +4,8 @@ from .environment import Environment
 from .types import Task, NodeType
 from .nn import NeuralNetwork
 from datetime import datetime, timedelta
+from joblib import Parallel, delayed
+
 
 def generate_tasks():
     initial_time = datetime.now()
@@ -26,28 +28,33 @@ def generate_tasks():
     return tasks
 
 
-
 class Evolution:
-    def __init__(self, n_pop, n_iter, input_size, m_rate, c_rate, n_runner):
+    def __init__(self, n_pop, n_iter, layers, m_rate, m_amount, c_rate, n_runner):
         self.n_pop = n_pop
         self.n_iter = n_iter
         self.m_rate = m_rate
+        self.m_amount = m_amount
         self.c_rate = c_rate
         self.n_runner = n_runner
         self.tasks = []
 
-        neural_net = NeuralNetwork(layers=input_size)
-        self.pop = [neural_net.mutate(m_rate) for _ in range(n_pop)]
+        neural_net = NeuralNetwork(layers=layers)
+        self.pop = [neural_net.mutate(m_rate, m_amount) for _ in range(n_pop)]
 
     # run evolution algorithm
     def evolve(self):
+        all_scores = []
         for gen in range(self.n_iter):
             print(gen+1)
             # TODO generate a new batch of tasks
             self.tasks = generate_tasks()
+            # scores = Parallel(n_jobs=4)(delayed(self._objective)(c) for c in self.pop)
             scores = [self._objective(c) for c in self.pop]
+            all_scores.append(scores)
             selected = [self._selection(scores) for _ in range(self.n_pop)]
             self.pop = self._next_generation(selected)
+            self.m_amount *= 0.75
+        return all_scores
 
     # get the best nn from the current population
     def best(self):
@@ -66,7 +73,7 @@ class Evolution:
         for i in range(0, self.n_pop, 2):
             p1, p2 = parents[i], parents[i + 1]
             for child in NeuralNetwork.crossover(p1, p2, self.c_rate):
-                children.append(child.mutate(self.m_rate))
+                children.append(child.mutate(self.m_rate, self.m_amount))
         return children
 
     # calculate the reward
