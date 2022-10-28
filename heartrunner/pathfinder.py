@@ -1,5 +1,5 @@
 import networkx as nx
-from .types import *
+from .HRtypes import *
 from geopy.distance import great_circle
 
 
