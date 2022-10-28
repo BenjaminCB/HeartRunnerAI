@@ -29,26 +29,42 @@ class HeartrunnerDB:
     def generate_runners(self, n=1):
         count = self.count_nodes(NodeType.Intersection)
         n = count if n > count else n
+        
+        runners: list[Runner] = []
+        batch = []
         ids = sample(range(count), n)
-        batch = [vars(Runner(intersection_id=id)) for id in ids]
+        for id in ids:
+            runner = Runner(intersection_id=id)
+            runners.append(runner)
+            batch.append(vars(runner))
+
         query = (
             "UNWIND $batch AS row "
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (r:Runner {id: row.id, speed: row.speed})-[:LocatedAt]->(i) "
         )
         self.__batch_query(query, batch)
+        return runners
 
     def generate_patients(self, n=1):
         count = self.count_nodes(NodeType.Intersection)
         n = count if n > count else n
+
+        patients: list[Patient] = []
+        batch = []
         ids = sample(range(count), n)
-        batch = [vars(Patient(intersection_id=id)) for id in ids]
+        for id in ids:
+            patient = Patient(intersection_id=id)
+            patients.append(patient)
+            batch.append(vars(patient))
+
         query = (
             "UNWIND $batch AS row "
             "MATCH (i:Intersection) WHERE i.id = row.intersection_id "
             "MERGE (p:Patient {id: row.id})-[:LocatedAt]->(i) "
         )
         self.__batch_query(query, batch)
+        return patients
 
     def get_node(self, node_type: NodeType, node_id: int):
         with self.driver.session(database="neo4j") as session:
@@ -124,9 +140,9 @@ class HeartrunnerDB:
                 limits = (north_limit[0], south_limit[0],
                           east_limit[1], west_limit[1])
 
-                graph = session.execute_read(
+                pf = session.execute_read(
                     self.__get_pathfinder, limits, patient)
-                return graph
+                return pf
             except:
                 logging.exception(" Error while executing get_subgraph")
                 return None
