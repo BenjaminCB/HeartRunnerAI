@@ -1,11 +1,10 @@
 import networkx as nx
 from heartrunner.types import *
+from heartrunner.settings import *
 from geopy.distance import great_circle
-from neo4j import Result
 
 def heuristic(node_a: Intersection, node_b: Intersection):
     return great_circle(node_a.coords(), node_b.coords()).meters
-
 
 class Pathfinder:
 
@@ -64,7 +63,7 @@ class Pathfinder:
     def get_runners(self):
         return [runner for runners in self._runners.values() for runner in runners]
 
-    def compute_paths(self, n_runners: int = None, n_aeds: int = None):
+    def compute_paths(self):
         def to_path(nx_path: list[Intersection]):
             source = nx_path[0]
             target = nx_path[-1]
@@ -79,17 +78,13 @@ class Pathfinder:
         self.paths = []
 
         # Get target intersection
-        target = self.get_node(self._patient.intersection.id)
-        
-        # Limit amount of runner/aed paths to find (default is no limit)
-        a_limit = isinstance(n_aeds, int)
-        r_limit = isinstance(n_runners, int)
-        r_i = 0
+        target = self.get_node(self._patient.intersection.id)    
 
         # Sort runners by shortest heuristic distance to the target
         r_closest = sorted(self._runners, key=lambda x: heuristic(x, target))
+        r_i = 0
         for r_source in r_closest:
-            if r_limit and r_i >= n_runners: break
+            if r_i >= CANDIDATE_RUNNERS: break
             
             try:
                 patient_path = to_path(nx.astar_path(self._graph, r_source, target, heuristic))
@@ -101,7 +96,7 @@ class Pathfinder:
             a_closest = sorted(self._aeds, key=lambda x: heuristic(x, r_source)+heuristic(x, target))
             aed_paths = []
             for a_source in a_closest:
-                if a_limit and a_i >= n_aeds: break
+                if a_i >= CANDIDATE_AEDS: break
                 
                 try:
                     rtoa = to_path(nx.astar_path(self._graph, r_source, a_source, heuristic))
@@ -111,13 +106,13 @@ class Pathfinder:
                     continue
                 
                 for aed in self._aeds[a_source]:
-                    if a_i >= n_aeds: break
+                    if a_i >= CANDIDATE_AEDS: break
                     aed_path.aed = aed
                     aed_paths.append(aed_path)
                     a_i += 1
 
             for runner in self._runners[r_source]:
-                if r_i >= n_runners: break
+                if r_i >= CANDIDATE_RUNNERS: break
                 self.paths.append((runner, patient_path, aed_paths))
                 r_i += 1
         

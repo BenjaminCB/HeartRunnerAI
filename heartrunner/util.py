@@ -4,18 +4,10 @@ import geojson
 import geojson_length
 from geopy.distance import great_circle
 from heartrunner.types import Intersection, Streetsegment, AED
+from heartrunner.settings import *
 
 
-INTERSECTIONS_CSV_HEADER = ["id", "latitude", "longitude"]
-INTERSECTIONS_CSV_PATH = "data/csv/intersections.csv"
-STREETS_CSV_HEADER = ["id", "head_id", "tail_id", "length", "geometry"]
-STREETS_CSV_PATH = "data/csv/streetsegments.csv"
-AEDS_CSV_HEADER = ["id", "intersection_id",
-                   "in_use", "open_hour", "close_hour"]
-AEDS_CSV_PATH = "data/csv/aeds.csv"
-
-
-def parse_geojson(streets_path, aeds_path):
+def parse_geojson(streets_path=STREETS_GEOJSON_PATH, aeds_path=AEDS_GEOJSON_PATH):
     def filter(feature):
         properties = feature["properties"]
         geometry = feature["geometry"]

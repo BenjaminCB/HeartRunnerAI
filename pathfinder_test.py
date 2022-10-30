@@ -1,5 +1,5 @@
 from timeit import default_timer
-from heartrunner.types import AED, Intersection, Runner, Patient
+from heartrunner.types import Runner, Patient
 from heartrunner.database import HeartrunnerDB
 
 if __name__ == "__main__":
@@ -13,7 +13,7 @@ if __name__ == "__main__":
         for patient in db.generate_entity(Patient, 1000):
             time1 = default_timer()
             pf = db.get_pathfinder(patient)
-            pf.compute_paths(n_runners=20, n_aeds=3)
+            pf.compute_paths()
             time2 = default_timer()
             elapsed = time2-time1
             size = len(pf.get_edges())+len(pf.get_nodes())
