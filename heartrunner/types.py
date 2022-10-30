@@ -12,6 +12,12 @@ class Entity(ABC):
 
     batch_merge_query: str
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, __o: object) -> bool:
+        return isinstance(__o, type(self)) and __o.id == self.id
+
     @classmethod
     def new_id(cls) -> int:
         return next(cls.id_iter)
@@ -41,16 +47,6 @@ class Intersection(Entity):
     def __init__(self, coords: tuple, id=None):
         self.id = id if id else self.new_id()
         self.latitude, self.longitude = coords
-
-    def __hash__(self) -> int:
-        return hash((self.id, self.coords()))
-
-    def __eq__(self, __o: object) -> bool:
-        return (
-            isinstance(__o, Intersection) and
-            self.id == __o.id and
-            self.coords() == __o.coords()
-        )
 
     def __repr__(self) -> str:
         return f"Intersection({self.id})"
@@ -315,12 +311,7 @@ class Path:
         self.streets = streets
         self.length = sum([s.length for s in streets])
         self.aed: AED = None
-
-    def __add__(self, p):
-        source = self.source
-        target = p.target
-        path = self.streets + p.streets
-        return Path(source=source, target=target, streets=path)
+        self.runner: Runner = None
 
     def __repr__(self) -> str:
         rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
@@ -328,8 +319,20 @@ class Path:
             rep += f"{street}\n"
         return rep
 
-    def eta(self, runner: Runner):
-        return ceil(self.length/runner.speed)
+    def eta(self):
+        if self.has_runner():
+            return ceil(self.length/self.runner.speed)
 
-    def is_aed_path(self):
+    def assign_runner(self, runner: Runner):
+        if isinstance(runner, Runner):
+            self.runner = runner
+
+    def has_runner(self):
+        return True if isinstance(self.runner, Runner) else False
+
+    def assign_aed(self, aed: AED):
+        if isinstance(aed, AED):
+            self.aed = aed
+
+    def has_aed(self):
         return True if isinstance(self.aed, AED) else False

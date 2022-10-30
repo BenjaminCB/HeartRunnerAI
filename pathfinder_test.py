@@ -13,7 +13,7 @@ if __name__ == "__main__":
         for patient in db.generate_entity(Patient, 1000):
             time1 = default_timer()
             pf = db.get_pathfinder(patient)
-            pf.compute_paths()
+            paths = pf.compute_paths()
             time2 = default_timer()
             elapsed = time2-time1
             size = len(pf.get_edges())+len(pf.get_nodes())

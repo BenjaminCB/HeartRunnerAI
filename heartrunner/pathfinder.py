@@ -13,6 +13,7 @@ class Pathfinder:
         patient: Patient 
     ):
         self.paths: list[tuple[Runner, Path, list[Path]]] = []
+        self.patient_paths: list[Path] = []
         self._patient = patient
         self._graph = nx.Graph()
         self._nodes: dict[int, Intersection] = {}
@@ -47,18 +48,18 @@ class Pathfinder:
 
     def add_aed(self, aed: AED):
         if aed.intersection not in self._aeds:
-            self._aeds[aed.intersection] = [aed]
+            self._aeds[aed.intersection] = {aed}
         else:
-            self._aeds[aed.intersection].append(aed)
+            self._aeds[aed.intersection].add(aed)
 
     def get_aeds(self):
         return [aed for aeds in self._aeds.values() for aed in aeds]
 
     def add_runner(self, runner: Runner):
         if runner.intersection not in self._runners:
-            self._runners[runner.intersection] = [runner]
+            self._runners[runner.intersection] = {runner}
         else:
-            self._runners[runner.intersection].append(runner)
+            self._runners[runner.intersection].add(runner)
 
     def get_runners(self):
         return [runner for runners in self._runners.values() for runner in runners]
@@ -99,21 +100,25 @@ class Pathfinder:
                 if a_i >= CANDIDATE_AEDS: break
                 
                 try:
-                    rtoa = to_path(nx.astar_path(self._graph, r_source, a_source, heuristic))
-                    atop = to_path(nx.astar_path(self._graph, a_source, target, heuristic))
-                    aed_path = rtoa+atop
+                    rtoa = nx.astar_path(self._graph, r_source, a_source, heuristic)
+                    atop = nx.astar_path(self._graph, a_source, target, heuristic)
+                    aed_path = to_path(rtoa+atop[1:])
                 except nx.NetworkXNoPath:
                     continue
                 
                 for aed in self._aeds[a_source]:
                     if a_i >= CANDIDATE_AEDS: break
-                    aed_path.aed = aed
+                    aed_path.assign_aed(aed)
                     aed_paths.append(aed_path)
                     a_i += 1
 
             for runner in self._runners[r_source]:
                 if r_i >= CANDIDATE_RUNNERS: break
                 self.paths.append((runner, patient_path, aed_paths))
+
+                patient_path.assign_runner(runner)
+                self.patient_paths.append(patient_path)
+
                 r_i += 1
         
         return self.paths
