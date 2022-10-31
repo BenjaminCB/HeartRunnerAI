@@ -3,8 +3,10 @@ from heartrunner.types import *
 from heartrunner.settings import *
 from geopy.distance import great_circle
 
+
 def heuristic(node_a: Intersection, node_b: Intersection):
     return great_circle(node_a.coords(), node_b.coords()).meters
+
 
 class Pathfinder:
 
@@ -12,13 +14,13 @@ class Pathfinder:
         self, 
         patient: Patient 
     ):
-        self.paths: list[tuple[Runner, Path, list[Path]]] = []
+        self.paths: list[PathAssignment] = []
         self._patient = patient
         self._graph = nx.Graph()
         self._nodes: dict[int, Intersection] = {}
         self._edges: dict[int, Streetsegment] = {}
-        self._aeds: dict[Intersection, list[AED]] = {}
-        self._runners: dict[Intersection, list[Runner]] = {}
+        self._aeds: dict[Intersection, set[AED]] = {}
+        self._runners: dict[Intersection, set[Runner]] = {}
 
     def add_node(self, node: Intersection):
         self._nodes[node.id] = node
@@ -86,23 +88,26 @@ class Pathfinder:
         for r_source in r_closest:
             if r_i >= CANDIDATE_RUNNERS: break
 
-            # Find shortest path between runner and target
             try:
+                # Find shortest path between runner and target
                 patient_path = to_path(nx.astar_path(self._graph, r_source, target, heuristic))
             except nx.NetworkXNoPath:
                 continue
             
             # Sort aeds by shortest summed heuristic distance between aed-runner and aed-target
-            a_i = 0
-            aed_paths = []
             a_closest = sorted(self._aeds, key=lambda x: heuristic(x, r_source)+heuristic(x, target))
+            aed_paths = []
+            a_i = 0
             for a_source in a_closest:
-                if a_i >= CANDIDATE_AEDS: break 
+                if a_i >= CANDIDATE_AEDS: break
+
                 try:
+                    # Find shortest path between runner and aed and target
                     rtoa = nx.astar_path(self._graph, r_source, a_source, heuristic)
                     atop = nx.astar_path(self._graph, a_source, target, heuristic)
                 except nx.NetworkXNoPath:
                     continue
+
                 aed_path = to_path(rtoa+atop[1:])
                 aed_path.aeds = self._aeds[a_source]
                 aed_paths.append(aed_path)
@@ -110,8 +115,11 @@ class Pathfinder:
             
             for runner in self._runners[r_source]:
                 if r_i >= CANDIDATE_RUNNERS: break
-                # print([patient_path.length]+[apath.length for apath in aed_paths])
-                self.paths.append((runner, patient_path, aed_paths))
+                self.paths.append(PathAssignment(runner, patient_path, aed_paths))
                 r_i += 1
+
+        if r_i < CANDIDATE_RUNNERS or a_i < 1:
+            # TODO: Ensure found paths satisfies input-shape of nn
+            pass
 
         return self.paths

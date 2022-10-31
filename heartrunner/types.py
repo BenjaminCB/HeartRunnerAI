@@ -317,3 +317,13 @@ class Path:
         for street in self.streets:
             rep += f"{street}\n"
         return rep
+
+    def cost(self, runner: Runner):
+        return ceil(self.length/runner.speed)
+
+
+class PathAssignment:
+    def __init__(self, runner: Runner, patient_path: Path, aed_paths: list[Path]):
+        self.runner = runner
+        self.paths = [patient_path] + aed_paths
+        self.costs = [path.cost(runner) for path in self.paths]
