@@ -310,29 +310,10 @@ class Path:
         self.target = target
         self.streets = streets
         self.length = sum([s.length for s in streets])
-        self.aed: AED = None
-        self.runner: Runner = None
+        self.aeds: set[AED] = {}
 
     def __repr__(self) -> str:
         rep = f"Path({self.source} -> {self.target}, {self.length}m):\n"
         for street in self.streets:
             rep += f"{street}\n"
         return rep
-
-    def eta(self):
-        if self.has_runner():
-            return ceil(self.length/self.runner.speed)
-
-    def assign_runner(self, runner: Runner):
-        if isinstance(runner, Runner):
-            self.runner = runner
-
-    def has_runner(self):
-        return True if isinstance(self.runner, Runner) else False
-
-    def assign_aed(self, aed: AED):
-        if isinstance(aed, AED):
-            self.aed = aed
-
-    def has_aed(self):
-        return True if isinstance(self.aed, AED) else False

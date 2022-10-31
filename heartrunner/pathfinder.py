@@ -13,7 +13,6 @@ class Pathfinder:
         patient: Patient 
     ):
         self.paths: list[tuple[Runner, Path, list[Path]]] = []
-        self.patient_paths: list[Path] = []
         self._patient = patient
         self._graph = nx.Graph()
         self._nodes: dict[int, Intersection] = {}
@@ -79,46 +78,40 @@ class Pathfinder:
         self.paths = []
 
         # Get target intersection
-        target = self.get_node(self._patient.intersection.id)    
+        target = self._patient.intersection
 
         # Sort runners by shortest heuristic distance to the target
         r_closest = sorted(self._runners, key=lambda x: heuristic(x, target))
         r_i = 0
         for r_source in r_closest:
             if r_i >= CANDIDATE_RUNNERS: break
-            
+
+            # Find shortest path between runner and target
             try:
                 patient_path = to_path(nx.astar_path(self._graph, r_source, target, heuristic))
             except nx.NetworkXNoPath:
                 continue
             
-            a_i = 0
             # Sort aeds by shortest summed heuristic distance between aed-runner and aed-target
-            a_closest = sorted(self._aeds, key=lambda x: heuristic(x, r_source)+heuristic(x, target))
+            a_i = 0
             aed_paths = []
+            a_closest = sorted(self._aeds, key=lambda x: heuristic(x, r_source)+heuristic(x, target))
             for a_source in a_closest:
-                if a_i >= CANDIDATE_AEDS: break
-                
+                if a_i >= CANDIDATE_AEDS: break 
                 try:
                     rtoa = nx.astar_path(self._graph, r_source, a_source, heuristic)
                     atop = nx.astar_path(self._graph, a_source, target, heuristic)
-                    aed_path = to_path(rtoa+atop[1:])
                 except nx.NetworkXNoPath:
                     continue
-                
-                for aed in self._aeds[a_source]:
-                    if a_i >= CANDIDATE_AEDS: break
-                    aed_path.assign_aed(aed)
-                    aed_paths.append(aed_path)
-                    a_i += 1
-
+                aed_path = to_path(rtoa+atop[1:])
+                aed_path.aeds = self._aeds[a_source]
+                aed_paths.append(aed_path)
+                a_i += 1
+            
             for runner in self._runners[r_source]:
                 if r_i >= CANDIDATE_RUNNERS: break
+                # print([patient_path.length]+[apath.length for apath in aed_paths])
                 self.paths.append((runner, patient_path, aed_paths))
-
-                patient_path.assign_runner(runner)
-                self.patient_paths.append(patient_path)
-
                 r_i += 1
-        
+
         return self.paths
