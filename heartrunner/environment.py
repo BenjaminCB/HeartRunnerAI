@@ -50,14 +50,15 @@ class Environment:
             #     i += 1
 
             # concat and normalize data
+            patient_input = np.concatenate((truncated_state, state_through_patient), axis=None)
+            patient_input = (patient_input - np.min(patient_input)) / (np.max(patient_input) - np.min(patient_input))
+            patient_prediction = self.nn.predict(patient_input)
+            self.state[task.runner_ids[patient_prediction[0][0]]] += task.patient_times[patient_prediction[0][0]]
 
-            nn_input = np.concatenate((truncated_state, state_through_patient, state_through_aed), axis=None)
-            nn_input = (nn_input - np.min(nn_input)) / (np.max(nn_input) - np.min(nn_input))
-            prediction = self.nn.predict(nn_input)
-
-            # update state
-            self.state[task.runner_ids[prediction[0][0]]] += task.patient_times[prediction[0][0]]
-            self.state[task.runner_ids[prediction[1][0]]] += task.aed_times[prediction[1][0]]
+            aed_input = np.concatenate((truncated_state, state_through_aed), axis=None)
+            aed_input = (aed_input - np.min(aed_input)) / (np.max(aed_input) - np.min(aed_input))
+            aed_prediction = self.nn.predict(aed_input)
+            self.state[task.runner_ids[aed_prediction[0][0]]] += task.aed_times[aed_prediction[0][0]]
 
             # update score from new state
             self.score += self.state.max()

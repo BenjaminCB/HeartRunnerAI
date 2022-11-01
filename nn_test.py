@@ -7,7 +7,7 @@ if __name__=="__main__":
     with HeartrunnerDB.default() as db:
         db.delete_nodes(NodeType.Runner)
         db.generate_runners(n_runner)
-    evo = Evolution(n_pop=10, n_iter=10, layers=[60, 40, 20], m_rate=0.1, m_amount=0.05, c_rate=0.1, n_runner=n_runner)
+    evo = Evolution(n_pop=10, n_iter=5, layers=[40, 30, 20], m_rate=0.1, m_amount=0.05, c_rate=0.1, n_runner=n_runner)
     all_scores = evo.evolve()
     min_scores = list(map(min, all_scores))
     print('lowest score in each generation')
