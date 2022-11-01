@@ -22,9 +22,27 @@ def test_mutate_rate(nn: NeuralNetwork):
 
 
 def test_mutate_amount(nn: NeuralNetwork):
-    pass
+    amount = 1
+    mutated = nn.mutate(rate=1, amount=amount)
+    nnw, mnw = nn.model.get_weights(), mutated.model.get_weights()
+    for i in range(len(nnw)):
+        diff: np.ndarray = abs(nnw[i]-mnw[i])
+        assert diff.max() <= amount
 
 
-def test_crossover():
-    pass
+def test_crossover(nn: NeuralNetwork):
+    nn1 = nn
+    nn2 = nn.mutate(rate=1, amount=1)
+    w1, w2 = nn1.model.get_weights(), nn2.model.get_weights()
+    
+    # Full crossover
+    NeuralNetwork.crossover(nn1, nn2, rate=1)
+    nw1, nw2 = nn1.model.get_weights(), nn2.model.get_weights()
+    
+    # No crossover
+    NeuralNetwork.crossover(nn1, nn2, rate=0)
+    nnw1, nnw2 = nn1.model.get_weights(), nn2.model.get_weights()
 
+    for i in range(len(w1)):
+        assert np.all(w1[i]==nw2[i]) and np.all(w2[i]==nw1[i])
+        assert np.all(nw1[i]==nnw1[i]) and np.all(nw2[i]==nnw2[i])

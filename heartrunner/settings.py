@@ -6,7 +6,16 @@ CANDIDATE_AEDS = 1          # Number of candidate aeds per runner
 
 # Neural Network settings
 NN_INPUT = 2*CANDIDATE_RUNNERS
+NN_HIDDEN = 2*NN_INPUT
 NN_OUTPUT = CANDIDATE_RUNNERS
+
+
+# Default Evolution settings
+POPULATION_SIZE = 100
+GENERATIONS = 10
+MUTATION_RATE = 0.1
+MUTATION_AMOUNT = 0.1
+CROSSOVER_RATE = 0.1
 
 
 # Intersection dataset

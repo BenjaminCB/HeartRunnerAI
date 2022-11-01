@@ -2,15 +2,21 @@ from __future__ import annotations
 import numpy as np
 from random import uniform
 from keras import layers, models
-from heartrunner.settings import NN_INPUT, NN_OUTPUT
+from heartrunner.settings import *
 
 
 class NeuralNetwork:
-    def __init__(self):
+    def __init__(
+        self, 
+        input_size=NN_INPUT, 
+        hidden_size=NN_HIDDEN, 
+        output_size=NN_OUTPUT
+    ):
         self.model = models.Sequential([
-            layers.Dense(NN_INPUT, activation='relu', input_shape=(NN_INPUT,)),
-            layers.Dense(NN_OUTPUT, activation='softmax')
+            layers.Dense(hidden_size, activation='relu', input_shape=(input_size,)),
+            layers.Dense(output_size, activation='softmax')
         ])
+
 
     def predict(self):
         pass
@@ -25,10 +31,8 @@ class NeuralNetwork:
     @staticmethod
     def crossover(n1: NeuralNetwork, n2: NeuralNetwork, rate: float):
         n1w, n2w = n1.model.get_weights(), n2.model.get_weights()
-        for i in range(len(n1w)):
-            if uniform(0, 1) < rate:
-                n1w[i], n2w[i] = n2w[i], n1w[i]
-        n1.model.set_weights(n1w)
-        n2.model.set_weights(n2w)
+        cross_weights = np.vectorize(lambda w1, w2: w1 if uniform(0, 1) > rate else w2)
+        n1.model.set_weights(list(map(cross_weights, n1w, n2w)))
+        n2.model.set_weights(list(map(cross_weights, n2w, n1w)))
         return [n1, n2]
 
