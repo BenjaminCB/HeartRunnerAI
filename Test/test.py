@@ -1,4 +1,3 @@
-import imp
 import unittest
 
 # Import functions from files here:
@@ -6,8 +5,8 @@ import heartrunner.HRtypes
 import heartrunner.pathfinder
 
 
-# Basic Test class 
-class TestTypes(unittest.TestCase):
+# Basic Test case
+class TypesTestCase(unittest.TestCase):
     runner = heartrunner.HRtypes.Runner
     patient = heartrunner.HRtypes.Patient
     intersection = heartrunner.HRtypes.Intersection
@@ -32,11 +31,13 @@ class TestTypes(unittest.TestCase):
 
 
 
-class TestPathfinder(unittest.TestCase):
+class PathfinderTestCase(unittest.TestCase):
     def get_AED(self):
         self.assertIs(heartrunner.pathfinder.Pathfinder.get_aeds, heartrunner.HRtypes.AED)
 
 
+
+
 if __name__ == '__main__':  
     # begin the unittest.main()  
-    unittest.main()  
+    unittest.main(verbosity=2)  
