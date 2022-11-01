@@ -20,11 +20,10 @@ class Evolution:
 
     def run(self):
         for iteration in range(self._iterations):
-            children = [self._nn.mutate(self._m_rate, self._m_amount)]
             rewards = np.zeros(self._pop_size)
 
-            for child in children:
-                # Evaluate child
+            for h in range(self._pop_size):
+                # Create and evaluate child
                 pass
 
             gain = rewards-rewards.mean()
