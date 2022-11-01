@@ -64,6 +64,23 @@ class Evolution:
             self.m_amount *= 0.75
         return worst_nns, best_nns
 
+    def evolve_two(self):
+        generations = []
+        for gen in range(self.n_iter):
+            print(gen+1)
+            self.tasks = generate_tasks()
+            for nn in self.pop:
+                children = [nn.mutate(0.8, 0.5) for _ in range(self.n_pop)]
+                scores = [self._objective(c) for c in children]
+                mean_reward = sum(scores) / len(scores)
+                gain = map(lambda r: r - mean_reward, scores)
+                weights = nn.model.get_weights()
+
+            selected = [self._selection(scores) for _ in range(self.n_pop)]
+            self.pop = self._next_generation(selected)
+            self.m_amount *= 0.75
+        return generations
+
     # get the best nn from the current population
     def best(self):
         res = self.pop[0]
