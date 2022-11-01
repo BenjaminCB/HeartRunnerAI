@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from heartrunner.neuralnetwork import NeuralNetwork
+from heartrunner.ai.neuralnetwork import NeuralNetwork
 
 
 @pytest.fixture

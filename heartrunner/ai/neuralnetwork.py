@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from random import uniform
 from keras import layers, models
-from heartrunner.settings import *
+from heartrunner.core.settings import *
 
 
 class NeuralNetwork:

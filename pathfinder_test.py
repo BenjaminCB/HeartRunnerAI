@@ -1,7 +1,7 @@
 from timeit import default_timer
-from heartrunner.settings import CANDIDATE_RUNNERS, RUNNERS
-from heartrunner.types import Runner, Patient
-from heartrunner.database import HeartrunnerDB
+from heartrunner.core.settings import *
+from heartrunner.core.types import Runner, Patient
+from heartrunner.core.database import HeartrunnerDB
 import numpy as np
 
 if __name__ == "__main__":
@@ -17,6 +17,8 @@ if __name__ == "__main__":
             time1 = default_timer()
             pf = db.get_pathfinder(patient)
             paths = pf.compute_paths()
+            a = np.array([path.costs for path in paths])
+            print(a.transpose())
             if len(paths) < CANDIDATE_RUNNERS:
                 count += 1
             time2 = default_timer()

@@ -4,9 +4,9 @@ from typing import Type
 from dotenv import load_dotenv
 from random import sample
 from neo4j import GraphDatabase, Driver
-from heartrunner.types import *
-from heartrunner.pathfinder import Pathfinder
-from heartrunner.util import coord_limits
+from heartrunner.core.types import *
+from heartrunner.core.pathfinder import Pathfinder
+from heartrunner.core.util import coord_limits
 
 
 class HeartrunnerDB:

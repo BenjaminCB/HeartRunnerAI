@@ -1,5 +1,5 @@
 import pytest
-from heartrunner.types import Intersection, Runner
+from heartrunner.core.types import Intersection, Runner
 
 
 def test_ids():

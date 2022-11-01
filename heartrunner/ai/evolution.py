@@ -1,6 +1,6 @@
 import numpy as np
-from heartrunner.settings import *
-from heartrunner.neuralnetwork import NeuralNetwork
+from heartrunner.core.settings import *
+from heartrunner.ai.neuralnetwork import NeuralNetwork
 
 class Evolution:
     def __init__(
@@ -19,12 +19,5 @@ class Evolution:
         self._nn = NeuralNetwork()
 
     def run(self):
-        for iteration in range(self._iterations):
-            rewards = np.zeros(self._pop_size)
-
-            for h in range(self._pop_size):
-                # Create and evaluate child
-                pass
-
-            gain = rewards-rewards.mean()
+        pass
 

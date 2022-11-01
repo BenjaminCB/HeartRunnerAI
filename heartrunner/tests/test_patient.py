@@ -1,5 +1,5 @@
 import pytest
-from heartrunner.types import Patient, Intersection
+from heartrunner.core.types import Patient, Intersection
 
 def test_ids():
     for i in range(1000):
