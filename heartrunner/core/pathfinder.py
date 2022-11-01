@@ -1,6 +1,6 @@
 import networkx as nx
 from heartrunner.core.types import *
-from heartrunner.core.settings import *
+from heartrunner.settings import *
 from geopy.distance import great_circle
 
 

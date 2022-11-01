@@ -4,7 +4,7 @@ import geojson
 import geojson_length
 from geopy.distance import great_circle
 from heartrunner.core.types import Intersection, Streetsegment, AED
-from heartrunner.core.settings import *
+from heartrunner.settings import *
 
 
 def parse_geojson(streets_path=STREETS_GEOJSON_PATH, aeds_path=AEDS_GEOJSON_PATH):

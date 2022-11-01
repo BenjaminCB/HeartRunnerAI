@@ -1,5 +1,5 @@
 from timeit import default_timer
-from heartrunner.core.settings import *
+from heartrunner.settings import *
 from heartrunner.core.types import Runner, Patient
 from heartrunner.core.database import HeartrunnerDB
 import numpy as np

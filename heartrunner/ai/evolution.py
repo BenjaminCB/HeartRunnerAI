@@ -1,5 +1,5 @@
 import numpy as np
-from heartrunner.core.settings import *
+from heartrunner.settings import *
 from heartrunner.ai.neuralnetwork import NeuralNetwork
 
 class Evolution:
