@@ -11,7 +11,7 @@ class NeuralNetwork:
         self.model = tf.keras.Sequential([
             # tf.keras.layers.InputLayer(input_shape=(layers,)),
             tf.keras.layers.Dense(layers[1], input_shape=(layers[0],), activation='relu'),
-            tf.keras.layers.Dense(layers[2])
+            tf.keras.layers.Dense(layers[2], activation='softmax')
         ])
         self.layers = layers
         self.model.compile(

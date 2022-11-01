@@ -5,12 +5,15 @@ from .types import Task, NodeType
 from .nn import NeuralNetwork
 from datetime import datetime, timedelta
 from joblib import Parallel, delayed
+import time as t
 
 
 def generate_tasks():
+    start = t.time()
     initial_time = datetime.now()
     task_chance = 0.0001
     task_times = []
+
     for i in range(86400):
         if rand.random() < task_chance:
             task_times.append(i)
@@ -21,9 +24,12 @@ def generate_tasks():
         db.delete_nodes(NodeType.Patient)
         patients = db.generate_patients(task_count)
         for i in range(task_count):
-            paths = db.get_pathfinder(patients[i], kilometers=2).compute_paths(n_runners=20, n_aeds=1)
+            paths = db.get_pathfinder(patients[i], kilometers=2).compute_paths(n_runners=5, n_aeds=1)
             time = initial_time + timedelta(seconds=task_times[i])
             tasks.append(Task(paths, time))
+
+    end = t.time()
+    print(end - start)
 
     return tasks
 
@@ -39,22 +45,24 @@ class Evolution:
         self.tasks = []
 
         neural_net = NeuralNetwork(layers=layers)
-        self.pop = [neural_net.mutate(m_rate, m_amount) for _ in range(n_pop)]
+        self.pop = [neural_net.mutate(0.8, 0.5) for _ in range(n_pop)]
 
     # run evolution algorithm
     def evolve(self):
-        all_scores = []
+        worst_nns = []
+        best_nns = []
         for gen in range(self.n_iter):
             print(gen+1)
             # TODO generate a new batch of tasks
             self.tasks = generate_tasks()
             # scores = Parallel(n_jobs=4)(delayed(self._objective)(c) for c in self.pop)
             scores = [self._objective(c) for c in self.pop]
-            all_scores.append(scores)
+            worst_nns.append(self.pop[scores.index(max(scores))])
+            best_nns.append(self.pop[scores.index(min(scores))])
             selected = [self._selection(scores) for _ in range(self.n_pop)]
             self.pop = self._next_generation(selected)
             self.m_amount *= 0.75
-        return all_scores
+        return worst_nns, best_nns
 
     # get the best nn from the current population
     def best(self):
@@ -82,6 +90,13 @@ class Evolution:
     def _objective(self, child):
         environment = Environment(child, self.n_runner)
         environment.enqueue_tasks(self.tasks)
+        environment.process_tasks()
+        return environment.score
+
+    @staticmethod
+    def objective(nn, n_runner, tasks):
+        environment = Environment(nn, n_runner)
+        environment.enqueue_tasks(tasks)
         environment.process_tasks()
         return environment.score
 

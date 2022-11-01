@@ -250,7 +250,7 @@ class Task:
         paths: list[tuple[Runner, Path, list[Path]]],
         time: datetime
     ):
-        self.count = 20
+        self.count = 5
         self.runner_ids = np.empty(self.count, dtype=np.int32)
         self.patient_paths = []
         self.patient_times = np.empty(self.count, dtype=np.int32)
