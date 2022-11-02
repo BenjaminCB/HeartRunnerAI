@@ -1,8 +1,10 @@
 import random
 import geojson
+import numpy as np
 from math import ceil
 from neo4j import Record
 from itertools import count
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 
@@ -159,7 +161,8 @@ class Runner(Entity):
         intersection: Intersection=None
     ):
         self.id = id if id else self.new_id()
-        self.speed = random.random()*3+3 if speed == None else speed
+        # self.speed = random.random()*3+3 if speed == None else speed
+        self.speed = 4
         self.intersection = intersection
 
     def __repr__(self) -> str:
@@ -322,8 +325,14 @@ class Path:
         return ceil(self.length/runner.speed)
 
 
-class PathAssignment:
-    def __init__(self, runner: Runner, patient_path: Path, aed_paths: list[Path]):
-        self.runner = runner
-        self.paths = [patient_path] + aed_paths
-        self.costs = [path.cost(runner) for path in self.paths]
+@dataclass
+class Candidate:
+    runner: Runner
+    patient_path: Path
+    aed_paths: list[Path]
+
+    def patient_cost(self):
+        return ceil(self.patient_path.length/self.runner.speed)
+
+    def aed_costs(self):
+        return [ceil(path.length/self.runner.speed) for path in self.aed_paths]

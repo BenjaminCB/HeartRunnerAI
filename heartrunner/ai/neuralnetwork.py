@@ -17,7 +17,6 @@ class NeuralNetwork:
             layers.Dense(output_size, activation='softmax')
         ])
 
-
     def predict(self):
         pass
 

@@ -14,7 +14,7 @@ class Pathfinder:
         self, 
         patient: Patient 
     ):
-        self.paths: list[PathAssignment] = []
+        self.candidates: list[Candidate] = []
         self._patient = patient
         self._graph = nx.Graph()
         self._nodes: dict[int, Intersection] = {}
@@ -65,7 +65,7 @@ class Pathfinder:
     def get_runners(self):
         return [runner for runners in self._runners.values() for runner in runners]
 
-    def compute_paths(self):
+    def compute_candidates(self):
         def to_path(nx_path: list[Intersection]):
             source = nx_path[0]
             target = nx_path[-1]
@@ -76,8 +76,8 @@ class Pathfinder:
                     edges.append(self.get_edge(edge_id))
             return Path(source=source, target=target, streets=edges)
 
-        # Remove any previous paths
-        self.paths = []
+        # Remove any previous candidates
+        self.candidates = []
 
         # Get target intersection
         target = self._patient.intersection
@@ -115,11 +115,10 @@ class Pathfinder:
             
             for runner in self._runners[r_source]:
                 if r_i >= CANDIDATE_RUNNERS: break
-                self.paths.append(PathAssignment(runner, patient_path, aed_paths))
+                self.candidates.append(Candidate(runner, patient_path, aed_paths))
                 r_i += 1
 
         if r_i < CANDIDATE_RUNNERS or a_i < 1:
-            # TODO: Ensure found paths satisfies input-shape of nn
-            pass
+            return None
 
-        return self.paths
+        return self.candidates
