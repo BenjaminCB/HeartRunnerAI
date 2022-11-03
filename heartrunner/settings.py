@@ -31,3 +31,7 @@ STREETS_CSV_PATH = "data/csv/streetsegments.csv"
 AEDS_GEOJSON_PATH = "data/geojson/wdc_aeds.geojson"
 AEDS_CSV_HEADER = ["id", "intersection_id", "in_use", "open_hour", "close_hour"]
 AEDS_CSV_PATH = "data/csv/aeds.csv"
+
+
+# Tasks dataset
+TASK_PATH = "data/training/"

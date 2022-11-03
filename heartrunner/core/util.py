@@ -1,9 +1,10 @@
 import math
 import csv
+import json
 import geojson
 import geojson_length
 from geopy.distance import great_circle
-from heartrunner.core.types import Intersection, Streetsegment, AED
+from heartrunner.core.types import *
 from heartrunner.settings import *
 
 
@@ -120,3 +121,45 @@ def coord_limits(origin: tuple, range: float):
     west_limit = dist_limit.destination(origin, 270).longitude
 
     return (north_limit, south_limit, east_limit, west_limit)
+
+
+def generate_tasks(count):
+    from heartrunner.core.database import HeartrunnerDB
+
+    with (
+        HeartrunnerDB.default() as db,
+        open(TASK_PATH+f"T{count}-R{RUNNERS}-C{CANDIDATE_RUNNERS}-A{CANDIDATE_AEDS}.json", "w") as file
+    ):
+        db.delete_nodes(Runner)
+        db.generate_entity(Runner, RUNNERS)
+        tasks = []
+        for i in range(count):
+            print(f"Generating task: {i+1}/{count}")
+            db.delete_nodes(Patient)
+            patient = db.generate_entity(Patient)[0]
+            
+            radius = 1
+            while True:
+                candidates = db.get_pathfinder(patient, kilometers=radius).compute_candidates()
+                radius += 0.5
+                if candidates: break
+                if radius > 2:
+                    db.delete_nodes(Patient)
+                    patient = db.generate_entity(Patient)[0]
+                    radius = 1
+
+            runners, p_costs, a_costs = [], [], []
+            for c in candidates:
+                runners.append(c.runner.id)
+                p_costs.append(c.patient_cost())
+                a_costs.append(min(c.aed_costs()))
+            tasks.append(Task(i, runners, p_costs, a_costs))
+        json.dump(obj=tasks, default=lambda o: o.to_json(), fp=file, indent=4)
+
+
+def load_tasks(file_name: str) -> list[Task]:
+    with open(TASK_PATH+file_name, "r") as task_file:
+        json_list = json.load(task_file)
+        task_list = [Task.from_json(json_task) for json_task in json_list]
+        return task_list
+            

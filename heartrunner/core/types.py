@@ -336,3 +336,28 @@ class Candidate:
 
     def aed_costs(self):
         return [ceil(path.length/self.runner.speed) for path in self.aed_paths]
+
+
+@dataclass
+class Task:
+    time: int
+    runners: list[int]
+    p_costs: list[int]
+    a_costs: list[int]
+
+    def to_json(self):
+        return {
+            "time": self.time,
+            "runners": self.runners,
+            "p_costs": self.p_costs,
+            "a_costs": self.a_costs
+        }
+
+    @staticmethod
+    def from_json(json: dict):
+        return Task(
+            time=json['time'],
+            runners=json['runners'],
+            p_costs=json['p_costs'],
+            a_costs=json['a_costs']
+        )
