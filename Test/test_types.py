@@ -1,5 +1,4 @@
-from heartrunner.HRtypes import *
-
+from heartrunner.types import *
 
 # Test class for grouping of test
 class TestTypes:
