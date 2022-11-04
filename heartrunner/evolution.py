@@ -1,4 +1,8 @@
+import copy
 import random as rand
+
+import numpy as np
+
 from .database import HeartrunnerDB
 from .environment import Environment
 from .types import Task, NodeType
@@ -70,15 +74,22 @@ class Evolution:
             print(gen+1)
             self.tasks = generate_tasks()
             for nn in self.pop:
-                children = [nn.mutate(0.8, 0.5) for _ in range(self.n_pop)]
+                children = [nn.mutate(self.m_rate, self.m_amount) for _ in range(10)]
                 scores = [self._objective(c) for c in children]
                 mean_reward = sum(scores) / len(scores)
-                gain = map(lambda r: r - mean_reward, scores)
-                weights = nn.model.get_weights()
+                gain = list(map(lambda r: r - mean_reward, scores))
+                print(scores)
 
-            selected = [self._selection(scores) for _ in range(self.n_pop)]
-            self.pop = self._next_generation(selected)
-            self.m_amount *= 0.75
+                weights = nn.model.get_weights()
+                l_rate = 0.2
+                for i in range(len(children)):
+                    cweights = children[i].model.get_weights()
+                    for layer in range(len(weights)):
+                        weights[layer] += l_rate * gain[i] * cweights[layer]
+
+                nn.model.set_weights(weights)
+            generations.append(copy.deepcopy(self.pop[0]))
+
         return generations
 
     # get the best nn from the current population

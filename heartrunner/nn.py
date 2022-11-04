@@ -43,6 +43,12 @@ class NeuralNetwork:
         mutated.model.set_weights(list(map(mutator, weights)))
         return mutated
 
+    def copy(self):
+        copy = NeuralNetwork(self.layers)
+        copy.model = self.model.__copy__()
+        copy.model.set_weights(self.model.get_weights())
+        return copy
+
     # method should perform a crossover of the nns and the inverse of that crossover and return them
     @staticmethod
     def crossover(p1: NeuralNetwork, p2: NeuralNetwork, c_rate):
