@@ -3,6 +3,7 @@ import csv
 import json
 import geojson
 import geojson_length
+from timeit import default_timer
 from geopy.distance import great_circle
 from heartrunner.core.types import *
 from heartrunner.settings import *
@@ -133,8 +134,9 @@ def generate_tasks(count):
         db.delete_nodes(Runner)
         db.generate_entity(Runner, RUNNERS)
         tasks = []
+        start_time = default_timer()
         for i in range(count):
-            print(f"Generating task: {i+1}/{count}")
+            print(f"Generating task: {i+1}/{count} ({(i+1)/count*100:.2f}%) - Elapsed: {default_timer()-start_time:.2f}")
             db.delete_nodes(Patient)
             patient = db.generate_entity(Patient)[0]
             
