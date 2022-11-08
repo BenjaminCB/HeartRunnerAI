@@ -5,9 +5,6 @@ from heartrunner.core.database import HeartrunnerDB
 
 
 SAMPLE = 1000
-RUNNERS = 2000
-CANDIDATE_RUNNERS = 20
-CANDIDATE_AEDS = 1
 SELECTION = 5
 RESULT_PATH = "data/experiments/experiment1.csv"
 
@@ -52,7 +49,7 @@ if __name__ == "__main__":
                     radius = 1
                     db.delete_nodes(Patient)
                     patient = db.generate_entity(Patient)[0]
-                
+            print(len(candidates))
             p_cost_proximity[i], a_cost_proximity[i] = proximity_choice(candidates)
             p_cost_path[i], a_cost_path[i] = path_choice(candidates)
 

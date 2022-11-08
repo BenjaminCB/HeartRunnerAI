@@ -1,6 +1,6 @@
 # General settings
 RUNNERS = 2000              # Total number of runners
-CANDIDATE_RUNNERS = 10      # Number of candidate runners per patient
+CANDIDATE_RUNNERS = 20      # Number of candidate runners per patient
 CANDIDATE_AEDS = 1          # Number of candidate aeds per runner
 
 
