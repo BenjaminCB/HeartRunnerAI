@@ -4,6 +4,7 @@ import numpy
 import json
 import heartrunner.core.types as hct
 from random import uniform, sample
+from time import time
 
 RUNNER_COUNT = 1000
 GREEDY_COUNT = 1000
@@ -189,7 +190,14 @@ if __name__ == "__main__":
 
     ga_instance.run()
 
-    ga_instance.plot_fitness(save_dir="../../plots/fitness.png")
+    ga_instance.plot_fitness(title=
+                             (
+                                 "Task count: {task_count}, "
+                                 "greedy count: {greedy_count}, "
+                                 "runner count: {runner_count}"
+                             ).format(task_count=TASK_COUNT, greedy_count=GREEDY_COUNT, runner_count=RUNNER_COUNT),
+                             ylabel="Fitness [percentage of greedy cost]",
+                             save_dir=f"../../plots/{int(time())}.png")
 
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
     print("Parameters of the best solution : {solution}".format(solution=solution))
