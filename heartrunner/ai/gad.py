@@ -3,13 +3,21 @@ import pygad.nn
 import numpy
 import json
 import heartrunner.core.types as hct
-from random import uniform
+from random import uniform, sample
 
+RUNNER_COUNT = 1000
+GREEDY_COUNT = 1000
+TASK_COUNT = 100
 ALL_TASKS: list[hct.Task] = []
 CURRENT_TASKS: list[hct.Task] = []
-STATE = numpy.zeros(20)
+STATE = numpy.zeros(RUNNER_COUNT)
 PREV_TIME = 0
 SAMPLE_CHANCE = 0.03
+
+
+def sample_n_tasks(n: int):
+    sampled = sample(ALL_TASKS, n)
+    return sorted(sampled, key=lambda t: t.time)
 
 
 def sample_tasks(pick_chance: float):
@@ -22,6 +30,48 @@ def sample_tasks(pick_chance: float):
     return sampled
 
 
+def update_state_time(t: hct.Task):
+    global PREV_TIME, STATE
+
+    STATE -= (t.time - PREV_TIME)
+    STATE = STATE.clip(min=0)
+    PREV_TIME = t.time
+
+
+# fill the STATE by performing n amount of tasks using the greedy algorithm
+def greedy(task_count: int):
+    global STATE, PREV_TIME
+
+    tasks = sample_n_tasks(task_count)
+    count = 1
+    for task in tasks:
+        update_state_time(task)
+        min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
+        p_idx = 0
+        a_idx = 1
+        i = 0
+        j = 0
+        while i < len(task.runners):
+            while j < len(task.runners):
+                if i == j:
+                    j += 1
+                    continue
+
+                cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
+                if cost < min_cost:
+                    min_cost = cost
+                    p_idx = i
+                    a_idx = j
+
+                j += 1
+
+            i += 1
+
+        STATE[task.runners[p_idx]] += task.p_costs[p_idx]
+        STATE[task.runners[a_idx]] += task.a_costs[a_idx]
+    PREV_TIME = 0
+
+
 def predict_with_cost(runners: list[int], cost: list[int], sol_idx: int):
     global GANN_instance, STATE
 
@@ -29,29 +79,45 @@ def predict_with_cost(runners: list[int], cost: list[int], sol_idx: int):
     truncated_state = numpy.take(STATE, runners)
     concated = numpy.concatenate((truncated_state, numpy.array(cost)), axis=None)
     input = numpy.array([concated / numpy.amax(concated)])
+    # input = numpy.array([concated])
     predictions = pygad.nn.predict(last_layer=GANN_instance.population_networks[sol_idx],
                                    data_inputs=input)
-    p_idx = predictions[0]
-    STATE[runners[p_idx]] += cost[p_idx]
+    c_idx = predictions[0]
+    STATE[runners[c_idx]] += cost[c_idx]
+
+    return c_idx
 
 
 def process(task: hct.Task, sol_idx: int):
     global PREV_TIME, STATE
 
-    # STATE -= (task.time - PREV_TIME)
-    # STATE = STATE.clip(min=0)
-    # PREV_TIME = task.time
+    update_state_time(task)
 
-    predict_with_cost(task.runners, task.p_costs, sol_idx)
-    predict_with_cost(task.runners, task.a_costs, sol_idx)
+    min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[0] + STATE[task.runners[0]]
+    for i in range(len(task.runners)):
+        for j in range(len(task.runners)):
+            cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
+            if cost < min_cost:
+                min_cost = cost
 
-    return numpy.amax(STATE)
+    p_idx = predict_with_cost(task.runners, task.p_costs, sol_idx)
+    a_idx = predict_with_cost(task.runners, task.a_costs, sol_idx)
+    prediction_cost = STATE[task.runners[p_idx]] + STATE[task.runners[a_idx]]
+
+    return min_cost, prediction_cost
 
 
 def fitness_func(solution, sol_idx):
     # latency_sum = sum([process(task, sol_idx) for task in CURRENT_TASKS])
-    latencies = [process(task, sol_idx) for task in CURRENT_TASKS]
-    return 10000000 / latencies[-1]
+    # latencies = [process(task, sol_idx) for task in CURRENT_TASKS]
+    min_costs = 0
+    prediction_costs = 0
+    for task in CURRENT_TASKS:
+        min_cost, prediction_cost = process(task, sol_idx)
+        min_costs += min_cost
+        prediction_costs += prediction_cost
+
+    return (min_costs / (prediction_costs + 1)) * 100
 
 
 def callback_generation(ga_instance):
@@ -64,14 +130,17 @@ def callback_generation(ga_instance):
     print("Generation = {generation}".format(generation=ga_instance.generations_completed))
     print("Fitness    = {fitness}".format(fitness=ga_instance.best_solution()[1]))
 
-    CURRENT_TASKS = sample_tasks(SAMPLE_CHANCE)
-    STATE = numpy.zeros(2500)
+    STATE = numpy.zeros(RUNNER_COUNT)
+    greedy(GREEDY_COUNT)
+    print("state maximum: {n}".format(n=numpy.amax(STATE)))
+    CURRENT_TASKS = sample_n_tasks(TASK_COUNT)
     PREV_TIME = 0
 
 
 def converter(json_line):
+    global RUNNER_COUNT
     task = hct.Task.from_json(json_line)
-    task.runners = list(map(lambda r: r % 20, task.runners))
+    task.runners = list(map(lambda r: r % RUNNER_COUNT, task.runners))
     return task
 
 
@@ -79,20 +148,19 @@ if __name__ == "__main__":
     with open("../../data/training/T3600-R2000-C10-A1.json", "r") as task_file:
         ALL_TASKS = list(map(converter, json.load(task_file)))
 
-    # roughly 100 tasks
-    CURRENT_TASKS = sample_tasks(SAMPLE_CHANCE)
+    greedy(GREEDY_COUNT)
+    CURRENT_TASKS = sample_tasks(TASK_COUNT)
 
-    num_solutions = 6
-    GANN_instance = pygad.gann.GANN(num_solutions=num_solutions,
+    GANN_instance = pygad.gann.GANN(num_solutions=10,
                                     num_neurons_input=20,
-                                    num_neurons_hidden_layers=[100,100,100,100,100],
+                                    num_neurons_hidden_layers=[40, 20],
                                     num_neurons_output=10,
                                     hidden_activations="relu",
                                     output_activation="softmax")
 
     population_vectors = pygad.gann.population_as_vectors(GANN_instance.population_networks)
 
-    ga_instance = pygad.GA(num_generations=250,
+    ga_instance = pygad.GA(num_generations=100,
                            num_parents_mating=4,
                            initial_population=population_vectors.copy(),
                            fitness_func=fitness_func,
