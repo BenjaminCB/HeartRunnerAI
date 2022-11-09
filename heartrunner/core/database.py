@@ -43,7 +43,7 @@ class HeartrunnerDB:
                 logging.exception(" Error while executing __batch_query")
                 return None
 
-    def generate_entity(self, entity_cls: Type[Entity], n=1):
+    def generate_entity(self, entity_cls: Type[Entity], n: int = 1):
         if entity_cls not in [Runner, Patient]:
             raise ValueError(f"{entity_cls.__name__} entities cannot be generated.")
 
@@ -112,6 +112,19 @@ class HeartrunnerDB:
                 return result
             except:
                 logging.exception(" Error while executing delete_nodes")
+                return None
+
+    def delete_nodes_by_id(self, node_cls: Type[Entity], ids: list[int]):
+        with self.driver.session(database="neo4j") as session:
+            try:
+                query = (
+                    f"MATCH (n:{node_cls.label}) WHERE n.id IN {ids} "
+                    "DETACH DELETE n"
+                )
+                result = session.run(query).consume()
+                return result
+            except:
+                logging.exception(" Error while executing get_nodes_by_id")
                 return None
 
     def count_nodes(self, node_cls: Type[Entity]):

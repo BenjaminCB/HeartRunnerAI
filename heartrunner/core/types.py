@@ -361,3 +361,18 @@ class Task:
             p_costs=json['p_costs'],
             a_costs=json['a_costs']
         )
+
+@dataclass
+class MultiTask:
+    time: int
+    tasks: list[Task]
+
+    def to_json(self):
+        return [t.to_json() for t in self.tasks]
+
+    @staticmethod
+    def from_json(json: list[dict]):
+        return MultiTask(
+            time=json[0]['time'],
+            tasks=[Task.from_json(d) for d in json]
+        )

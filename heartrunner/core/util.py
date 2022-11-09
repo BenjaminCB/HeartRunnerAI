@@ -6,6 +6,7 @@ import geojson_length
 from geopy.distance import great_circle
 from heartrunner.core.types import *
 from heartrunner.settings import *
+from random import choices
 
 
 def parse_geojson(streets_path=STREETS_GEOJSON_PATH, aeds_path=AEDS_GEOJSON_PATH):
@@ -157,9 +158,58 @@ def generate_tasks(count):
         json.dump(obj=tasks, default=lambda o: o.to_json(), fp=file, indent=4)
 
 
+def generate_multi_task(count):
+    from heartrunner.core.database import HeartrunnerDB
+
+    with (
+        HeartrunnerDB.default() as db,
+        open(TASK_PATH + f"MT{count}-R{RUNNERS}-C{CANDIDATE_RUNNERS}-A{CANDIDATE_AEDS}.json", "w") as file
+    ):
+        db.delete_nodes(Runner)
+        db.generate_entity(Runner, RUNNERS)
+        multi_tasks = []
+        task_count_possibility = [1, 2, 3, 4]
+        task_distribution = [0.75, 0.2, 0.04, 0.01]
+        for i in range(count):
+            print(f"Generating task: {i + 1}/{count}")
+            db.delete_nodes(Patient)
+
+            task_count = choices(task_count_possibility, task_distribution)[0]
+            patients = db.generate_entity(Patient, task_count)
+
+            candidatess = []
+            for patient in patients:
+
+                radius = 1
+                while True:
+                    candidates = db.get_pathfinder(patient, kilometers=radius).compute_candidates()
+                    if candidates:
+                        break
+
+                    radius += 0.5
+
+                    # no candidates within 2km trying again with new patients
+                    if radius > 2:
+                        db.delete_nodes_by_id(Patient, [Patient(patient).id])
+                        patient = db.generate_entity(Patient)[0]
+                        radius = 1
+
+                candidatess.append(candidates)
+
+            tasks = []
+            for candidates in candidatess:
+                runners, p_costs, a_costs = [], [], []
+                for c in candidates:
+                    runners.append(c.runner.id)
+                    p_costs.append(c.patient_cost())
+                    a_costs.append(min(c.aed_costs()))
+                tasks.append(Task(i, runners, p_costs, a_costs))
+            multi_tasks.append(MultiTask(i, tasks))
+        json.dump(obj=multi_tasks, default=lambda o: o.to_json(), fp=file, indent=4)
+
+
 def load_tasks(file_name: str) -> list[Task]:
     with open(TASK_PATH+file_name, "r") as task_file:
         json_list = json.load(task_file)
         task_list = [Task.from_json(json_task) for json_task in json_list]
         return task_list
-            
