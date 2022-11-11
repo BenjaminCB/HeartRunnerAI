@@ -10,21 +10,21 @@ from ortools.linear_solver import pywraplp
 RUNNER_COUNT = 1000
 GREEDY_COUNT = 1000
 TASK_COUNT = 100
-ALL_TASKS: list[hct.Task] = []
-CURRENT_TASKS: list[hct.Task] = []
+ALL_TASKS: list[hct.MultiTask] = []
+CURRENT_TASKS: list[hct.MultiTask] = []
 STATE = numpy.zeros(RUNNER_COUNT)
 PREV_TIME = 0
 SAMPLE_CHANCE = 0.03
 
 
 # return a sorted sample from the list of tasks
-def sample_n_tasks(n: int):
+def sample_n_tasks(n: int) -> list[hct.MultiTask]:
     sampled = sample(ALL_TASKS, n)
     return sorted(sampled, key=lambda t: t.time)
 
 
 # return a sorted sample from the list of tasks
-def sample_tasks(pick_chance: float):
+def sample_tasks(pick_chance: float) -> list[hct.MultiTask]:
     sampled = []
 
     for task in ALL_TASKS:
@@ -45,39 +45,6 @@ def update_state_time(t: hct.Task):
 
 # fill the STATE by performing n amount of tasks using the greedy algorithm
 def greedy(task_count: int):
-    global STATE, PREV_TIME
-
-    tasks = sample_n_tasks(task_count)
-    for task in tasks:
-        update_state_time(task)
-        min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
-        p_idx = 0
-        a_idx = 1
-        i = 0
-        j = 0
-        while i < len(task.runners):
-            while j < len(task.runners):
-                if i == j:
-                    j += 1
-                    continue
-
-                cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
-                if cost < min_cost:
-                    min_cost = cost
-                    p_idx = i
-                    a_idx = j
-
-                j += 1
-
-            i += 1
-
-        STATE[task.runners[p_idx]] += task.p_costs[p_idx]
-        STATE[task.runners[a_idx]] += task.a_costs[a_idx]
-    PREV_TIME = 0
-
-
-# fill the STATE by performing n amount of tasks using the greedy algorithm
-def multi_greedy(task_count: int):
     global STATE, PREV_TIME
     tasks = sample_n_tasks(task_count)
 
@@ -155,7 +122,7 @@ def predict_with_cost(runners: list[int], cost: list[int], sol_idx: int):
 
 
 # make the nn perform a task return the cost of the choice
-def nn_choice(task: hct.Task, sol_idx: int):
+def nn_choice(task: hct.MultiTask, sol_idx: int):
     global PREV_TIME, STATE
 
     p_idx = predict_with_cost(task.runners, task.p_costs, sol_idx)
