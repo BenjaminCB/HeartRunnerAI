@@ -76,66 +76,6 @@ def greedy(task_count: int):
     PREV_TIME = 0
 
 
-# fill the STATE by performing n amount of tasks using the greedy algorithm
-def multi_greedy(task_count: int):
-    global STATE, PREV_TIME
-    tasks = sample_n_tasks(task_count)
-
-    # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
-    # https://developers.google.com/optimization/assignment/assignment_example
-    costs = []
-    for task in tasks:
-        costs[0][task] = task.p_costs
-        costs[1][task] = task.a_costs
-
-    num_workers = len(tasks[0].runners)
-    num_tasks = 2
-
-    # Solver
-    # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('SCIP')
-
-    if not solver:
-        return
-
-    # Variables
-    # x[i, j] is an array of 0-1 variables, which will be 1
-    # if worker i is assigned to task j.
-    x = {}
-    for i in range(num_workers):
-        for j in range(num_tasks):
-            x[i, j] = solver.IntVar(0, 1, '')
-
-    # Constraints
-    # Each worker is assigned to at most 1 task.
-    for i in range(num_workers):
-        solver.Add(solver.Sum([x[i, j] for j in range(num_tasks)]) <= 1)
-
-    # Each task is assigned to exactly one worker.
-    for j in range(num_tasks):
-        solver.Add(solver.Sum([x[i, j] for i in range(num_workers)]) == 1)
-
-    # Objective
-    objective_terms = []
-    for i in range(num_workers):
-        for j in range(num_tasks):
-            objective_terms.append(costs[i][j] * x[i, j])
-    solver.Minimize(solver.Sum(objective_terms))
-
-    # Solve
-    status = solver.Solve()
-
-    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        print(f'Total cost = {solver.Objective().Value()}\n')
-        for i in range(num_workers):
-            # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
-            if x[i, 0].solution_value() > 0.5:
-                STATE[tasks[0].runners[i]] += tasks[0].p_costs[0]
-            if x[i, 1].solution_value() > 0.5:
-                STATE[tasks[1].runners[i]] += tasks[1].a_costs[1]
-
-    PREV_TIME = 0
-
 
 # make a prediction for a single choice such a which runner for the patient
 def predict_with_cost(runners: list[int], cost: list[int], sol_idx: int):
