@@ -50,13 +50,18 @@ def greedy(task_count: int):
 
     # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
     # https://developers.google.com/optimization/assignment/assignment_example
+    # Worker1 [p.costs, p.costs, ... a_costs, a_costs ...] --- For each runner
     costs = []
-    for task in tasks:
-        costs[0][task] = task.p_costs
-        costs[1][task] = task.a_costs
+
+    for task in range(0, task_count, 1):
+        for runner in tasks[task].runners:
+            costs[runner][task] = tasks[task].a_costs[runner]
+    for task in range(task_count, task_count*2, 1):
+        for runner in tasks[task].runners:
+            costs[runner][task] = tasks[task].p_costs[runner]
 
     num_workers = len(tasks[0].runners)
-    num_tasks = 2
+    num_tasks = task_count*2
 
     # Solver
     # Create the mip solver with the SCIP backend.
