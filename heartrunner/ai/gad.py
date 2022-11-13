@@ -222,7 +222,7 @@ if __name__ == "__main__":
         ALL_TASKS = list(map(converter, json.load(task_file)))
 
     greedy(GREEDY_COUNT)
-    CURRENT_TASKS = sample_tasks(TASK_COUNT)
+    CURRENT_TASKS = sample_n_tasks(TASK_COUNT)
 
     GANN_instance = pygad.gann.GANN(num_solutions=10,
                                     num_neurons_input=20,

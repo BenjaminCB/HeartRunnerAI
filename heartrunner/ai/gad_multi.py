@@ -35,7 +35,7 @@ def sample_tasks(pick_chance: float) -> list[hct.MultiTask]:
 
 
 # adjust state latencies as time passes
-def update_state_time(t: hct.Task):
+def update_state_time(t: hct.MultiTask):
     global PREV_TIME, STATE
 
     STATE -= (t.time - PREV_TIME)
@@ -177,7 +177,7 @@ def callback_generation(ga):
 
 
 # how to we convert a task in json format to a Task object
-def converter(json_line):
+def converter(json_line) -> hct.MultiTask:
     global RUNNER_COUNT
     task = hct.Task.from_json(json_line)
     task.runners = list(map(lambda r: r % RUNNER_COUNT, task.runners))
@@ -185,11 +185,11 @@ def converter(json_line):
 
 
 if __name__ == "__main__":
-    with open("../../data/training/T3600-R2000-C10-A1.json", "r") as task_file:
+    with open("../../data/training/MT3600-R2000-C10-A1.json", "r") as task_file:
         ALL_TASKS = list(map(converter, json.load(task_file)))
 
     greedy(GREEDY_COUNT)
-    CURRENT_TASKS = sample_tasks(TASK_COUNT)
+    CURRENT_TASKS = sample_n_tasks(TASK_COUNT)
 
     GANN_instance = pygad.gann.GANN(num_solutions=10,
                                     num_neurons_input=20,
