@@ -6,6 +6,7 @@ import heartrunner.core.types as hct
 from random import uniform, sample
 from time import time
 from ortools.linear_solver import pywraplp
+from itertools import permutations, chain
 
 RUNNER_COUNT = 1000
 GREEDY_COUNT = 1000
@@ -15,6 +16,8 @@ CURRENT_TASKS: list[hct.MultiTask] = []
 STATE = numpy.zeros(RUNNER_COUNT)
 PREV_TIME = 0
 SAMPLE_CHANCE = 0.03
+MAX_MULTI_TASK_COUNT = 4
+RUNNERS_PER_TASK = 10
 
 
 # return a sorted sample from the list of tasks
@@ -110,35 +113,52 @@ def greedy(task_count: int):
 
 
 # make a prediction for a single choice such a which runner for the patient
-def predict_with_cost(runners: list[int], cost: list[int], sol_idx: int):
+def predict_with_cost(runners: list[list[int]], cost: list[list[int]], sol_idx: int):
     global GANN_instance, STATE
 
-    # make prediction for patient runner and update state
-    truncated_state = numpy.take(STATE, runners)
-    concat = numpy.concatenate((truncated_state, numpy.array(cost)), axis=None)
-    nn_input = numpy.array([concat / numpy.amax(concat)])
-    # input = numpy.array([concatenated])
-    predictions = pygad.nn.predict(last_layer=GANN_instance.population_networks[sol_idx],
-                                   data_inputs=nn_input)
-    c_idx = predictions[0]
-    STATE[runners[c_idx]] += cost[c_idx]
+    cost_idxs = []
 
-    return c_idx
+    for i in range(len(runners)):
+        padding_count = 2 * RUNNERS_PER_TASK * (MAX_MULTI_TASK_COUNT - i)
+        # this is probably worth playing around with
+        padding_value = 10
+
+        # prepare data
+        flatten = lambda l: list(chain.from_iterable(l))
+        truncated_state = numpy.take(STATE, flatten(runners))
+        data = numpy.concatenate((truncated_state, numpy.array(flatten(cost))), axis=None)
+        scaled_data = data / numpy.amax(data)
+        padding = numpy.full(padding_count, padding_value)
+        nn_input = numpy.concatenate((scaled_data, padding), axis=None)
+
+        predictions = pygad.nn.predict(last_layer=GANN_instance.population_networks[sol_idx],
+                                       data_inputs=nn_input)
+        c_idx = predictions[0]
+        STATE[runners[c_idx]] += cost[c_idx]
+        cost_idxs.append(c_idx)
+
+    return cost_idxs
 
 
 # make the nn perform a task return the cost of the choice
 def nn_choice(task: hct.MultiTask, sol_idx: int):
     global PREV_TIME, STATE
 
-    p_idx = predict_with_cost(task.runners, task.p_costs, sol_idx)
-    a_idx = predict_with_cost(task.runners, task.a_costs, sol_idx)
-    prediction_cost = STATE[task.runners[p_idx]] + STATE[task.runners[a_idx]]
+    runners = list(map(lambda t: t.runners, task.tasks))
+    p_costs = list(map(lambda t: t.p_costs, task.tasks))
+    a_costs = list(map(lambda t: t.a_costs, task.tasks))
+
+    p_idxs = predict_with_cost(runners, p_costs, sol_idx)
+    a_idxs = predict_with_cost(runners, a_costs, sol_idx)
+    prediction_cost = 0
+    for i in range(len(p_idxs)):
+        prediction_cost += STATE[task.tasks[i].runners[p_idxs[i]]] + STATE[task.tasks[i].runners[a_idxs[i]]]
 
     return prediction_cost
 
 
 # calculate the cost of the greedy choice
-def greedy_cost(task: hct.Task):
+def greedy_cost(task: hct.MultiTask):
     min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[0] + STATE[task.runners[0]]
     for i in range(len(task.runners)):
         for j in range(len(task.runners)):
