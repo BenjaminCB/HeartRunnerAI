@@ -49,67 +49,101 @@ def update_state_time(t: hct.MultiTask):
 # fill the STATE by performing n amount of tasks using the greedy algorithm
 def greedy(task_count: int):
     global STATE, PREV_TIME
-    tasks = sample_n_tasks(task_count)
+
+    multitasks = sample_n_tasks(task_count)
+    for mt in multitasks:
+        for task in mt.tasks:
+            update_state_time(task)
+            min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
+            p_idx = 0
+            a_idx = 1
+            i = 0
+            j = 0
+            while i < len(task.runners):
+                while j < len(task.runners):
+                    if i == j:
+                        j += 1
+                        continue
+
+                    cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
+                    if cost < min_cost:
+                        min_cost = cost
+                        p_idx = i
+                        a_idx = j
+
+                    j += 1
+
+                i += 1
+
+            STATE[task.runners[p_idx]] += task.p_costs[p_idx]
+            STATE[task.runners[a_idx]] += task.a_costs[a_idx]
+        PREV_TIME = 0
+
+# fill the STATE by performing n amount of tasks using the greedy algorithm
+def greedyM(task_count: int):
+    global STATE, PREV_TIME
+    multitask = sample_n_tasks(task_count)
 
     # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
     # https://developers.google.com/optimization/assignment/assignment_example
     # Worker1 [p.costs, p.costs, ... a_costs, a_costs ...] --- For each runner
-    costs = []
 
-    for task in range(0, task_count, 1):
-        for runner in tasks[task].runners:
-            costs[runner][task] = tasks[task].a_costs[runner]
-    for task in range(task_count, task_count*2, 1):
-        for runner in tasks[task].runners:
-            costs[runner][task] = tasks[task].p_costs[runner]
+    for mt in multitask:
+        costs = []
+        num_workers = len(mt.tasks[0].runners)
+        num_tasks = len(mt.tasks) * 2
 
-    num_workers = len(tasks[0].runners)
-    num_tasks = task_count*2
+        for task in range(0, task_count, 1):
+            for runner in range(num_workers):
+                costs[runner][task] = mt.tasks[task].a_costs[runner] + STATE[mt.tasks[task].runners[runner]]
+        for task in range(task_count, task_count*2, 1):
+            for runner in range(num_workers):
+                costs[runner][task] = mt.tasks[task].p_costs[runner] + STATE[mt.tasks[task].runners[runner]]
 
-    # Solver
-    # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+        # Solver
+        # Create the mip solver with the SCIP backend.
+        solver = pywraplp.Solver.CreateSolver('SCIP')
 
-    if not solver:
-        return
+        if not solver:
+            return
 
-    # Variables
-    # x[i, j] is an array of 0-1 variables, which will be 1
-    # if worker i is assigned to task j.
-    x = {}
-    for i in range(num_workers):
-        for j in range(num_tasks):
-            x[i, j] = solver.IntVar(0, 1, '')
-
-    # Constraints
-    # Each worker is assigned to at most 1 task.
-    for i in range(num_workers):
-        solver.Add(solver.Sum([x[i, j] for j in range(num_tasks)]) <= 1)
-
-    # Each task is assigned to exactly one worker.
-    for j in range(num_tasks):
-        solver.Add(solver.Sum([x[i, j] for i in range(num_workers)]) == 1)
-
-    # Objective
-    objective_terms = []
-    for i in range(num_workers):
-        for j in range(num_tasks):
-            objective_terms.append(costs[i][j] * x[i, j])
-    solver.Minimize(solver.Sum(objective_terms))
-
-    # Solve
-    status = solver.Solve()
-
-    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        print(f'Total cost = {solver.Objective().Value()}\n')
+        # Variables
+        # x[i, j] is an array of 0-1 variables, which will be 1
+        # if worker i is assigned to task j.
+        x = {}
         for i in range(num_workers):
-            # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
-            if x[i, 0].solution_value() > 0.5:
-                STATE[tasks[0].runners[i]] += tasks[0].p_costs[0]
-            if x[i, 1].solution_value() > 0.5:
-                STATE[tasks[1].runners[i]] += tasks[1].a_costs[1]
+            for j in range(num_tasks):
+                x[i, j] = solver.IntVar(0, 1, '')
 
-    PREV_TIME = 0
+        # Constraints
+        # Each worker is assigned to at most 1 task.
+        for i in range(num_workers):
+            solver.Add(solver.Sum([x[i, j] for j in range(num_tasks)]) <= 1)
+
+        # Each task is assigned to exactly one worker.
+        for j in range(num_tasks):
+            solver.Add(solver.Sum([x[i, j] for i in range(num_workers)]) == 1)
+
+        # Objective
+        objective_terms = []
+        for i in range(num_workers):
+            for j in range(num_tasks):
+                objective_terms.append(costs[i][j] * x[i, j])
+        solver.Minimize(solver.Sum(objective_terms))
+
+        # Solve
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+            print(f'Total cost = {solver.Objective().Value()}\n')
+            for i in range(num_workers):
+                for j in range(num_tasks):
+                    # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
+                    if x[i, j].solution_value() > 0.5:
+                        STATE[mt.tasks[j].runners[i]] += mt.tasks[j].p_costs[i]
+                        continue
+
+        PREV_TIME = 0
 
 
 # make a prediction for a single choice such a which runner for the patient
