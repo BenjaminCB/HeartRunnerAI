@@ -53,7 +53,7 @@ def greedy(task_count: int):
     multitasks = sample_n_tasks(task_count)
     for mt in multitasks:
         for task in mt.tasks:
-            update_state_time(task)
+            update_state_time(mt)
             min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
             p_idx = 0
             a_idx = 1
@@ -86,9 +86,10 @@ def greedyM(task_count: int):
 
     # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
     # https://developers.google.com/optimization/assignment/assignment_example
-    # Worker1 [p.costs, p.costs, ... a_costs, a_costs ...] --- For each runner
+    # Worker1 [a.costs, a.costs, ... p_costs, p_costs ...] --- For each runner
 
     for mt in multitask:
+        update_state_time(mt)
         costs = []
         num_workers = len(mt.tasks[0].runners)
         num_tasks = len(mt.tasks) * 2
@@ -137,13 +138,15 @@ def greedyM(task_count: int):
         if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
             print(f'Total cost = {solver.Objective().Value()}\n')
             for i in range(num_workers):
-                for j in range(num_tasks):
+                for j in range(0, len(mt.tasks), 1):
                     # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
                     if x[i, j].solution_value() > 0.5:
-                        STATE[mt.tasks[j].runners[i]] += mt.tasks[j].p_costs[i]
+                        STATE[mt.tasks[j].runners[i]] += mt.tasks[j].a_costs[i] + STATE[mt.tasks[j].runners[i]]
                         continue
-
-        PREV_TIME = 0
+                for j in range(len(mt.tasks), len(mt.tasks) * 2, 1):
+                    if x[i, j].solution_value() > 0.5:
+                        STATE[mt.tasks[j].runners[i]] += mt.tasks[j].p_costs[i] + STATE[mt.tasks[j].runners[i]]
+                        continue
 
 
 # make a prediction for a single choice such a which runner for the patient
