@@ -1,7 +1,7 @@
 # General settings
-RUNNERS = 2000              # Total number of runners
-CANDIDATE_RUNNERS = 20      # Number of candidate runners per patient
-CANDIDATE_AEDS = 1          # Number of candidate aeds per runner
+RUNNERS = 15000              # Total number of runners
+CANDIDATE_RUNNERS = 30      # Number of candidate runners per patient
+CANDIDATE_AEDS = 3          # Number of candidate aeds per runner
 
 
 # Neural Network settings

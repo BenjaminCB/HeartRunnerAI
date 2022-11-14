@@ -34,9 +34,9 @@ class Pathfinder:
         return list(self._nodes.values())
 
     def add_edge(self, edge: Streetsegment):
+        self.add_node(edge.source)
+        self.add_node(edge.target)
         self._edges[edge.id] = edge
-        self._nodes[edge.source.id] = edge.source
-        self._nodes[edge.target.id] = edge.target
         self._graph.add_edge(edge.source, edge.target,
                             id=edge.id, weight=edge.length)
 
@@ -49,6 +49,7 @@ class Pathfinder:
 
     def add_aed(self, aed: AED):
         if aed.intersection not in self._aeds:
+            self.add_node(aed.intersection)
             self._aeds[aed.intersection] = {aed}
         else:
             self._aeds[aed.intersection].add(aed)
@@ -58,6 +59,7 @@ class Pathfinder:
 
     def add_runner(self, runner: Runner):
         if runner.intersection not in self._runners:
+            self.add_node(runner.intersection)
             self._runners[runner.intersection] = {runner}
         else:
             self._runners[runner.intersection].add(runner)
@@ -118,7 +120,7 @@ class Pathfinder:
                 self.candidates.append(Candidate(runner, patient_path, aed_paths))
                 r_i += 1
 
-        if r_i < CANDIDATE_RUNNERS or a_i < 1:
+        if r_i < CANDIDATE_RUNNERS or a_i < CANDIDATE_AEDS:
             return None
 
         return self.candidates
