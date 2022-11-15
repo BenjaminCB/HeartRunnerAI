@@ -15,6 +15,7 @@ tensorflow = {version = "*", sys_platform = "!= 'darwin'"}
 tensorflow-macos = {version = "*", sys_platform = "== 'darwin'"}
 tensorflow-metal = {version = "*", sys_platform = "== 'darwin'"}
 pygad = "*"
+ortools = "*"
 
 [dev-packages]
 autopep8 = "*"

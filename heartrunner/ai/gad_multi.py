@@ -79,8 +79,9 @@ def greedy(task_count: int):
             STATE[task.runners[a_idx]] += task.a_costs[a_idx]
         PREV_TIME = 0
 
+
 # fill the STATE by performing n amount of tasks using the greedy algorithm
-def greedyM(task_count: int):
+def greedy_mip(task_count: int):
     global STATE, PREV_TIME
     multitask = sample_n_tasks(task_count)
 
@@ -96,10 +97,10 @@ def greedyM(task_count: int):
 
         for task in range(0, task_count, 1):
             for runner in range(num_workers):
-                costs[runner][task] = mt.tasks[task].a_costs[runner] + STATE[mt.tasks[task].runners[runner]]
+                costs[task][runner] = mt.tasks[task].a_costs[runner] + STATE[mt.tasks[task].runners[runner]]
         for task in range(task_count, task_count*2, 1):
             for runner in range(num_workers):
-                costs[runner][task] = mt.tasks[task].p_costs[runner] + STATE[mt.tasks[task].runners[runner]]
+                costs[task][runner] = mt.tasks[task].p_costs[runner] + STATE[mt.tasks[task].runners[runner]]
 
         # Solver
         # Create the mip solver with the SCIP backend.
@@ -196,13 +197,15 @@ def nn_choice(task: hct.MultiTask, sol_idx: int):
 
 # calculate the cost of the greedy choice
 def greedy_cost(task: hct.MultiTask):
-    min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[0] + STATE[task.runners[0]]
-    for i in range(len(task.runners)):
-        for j in range(len(task.runners)):
-            cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
-            if cost < min_cost:
-                min_cost = cost
-
+    min_cost = 0
+    for task in task.tasks:
+        min_cost_inner = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[0] + STATE[task.runners[0]]
+        for i in range(len(task.runners)):
+            for j in range(len(task.runners)):
+                cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
+                if cost < min_cost_inner:
+                    min_cost_inner = cost
+                    min_cost += cost
     return min_cost
 
 
