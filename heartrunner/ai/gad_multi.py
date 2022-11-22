@@ -8,8 +8,8 @@ from time import time
 from ortools.linear_solver import pywraplp
 from itertools import permutations, chain
 
-RUNNER_COUNT = 1000
-GREEDY_COUNT = 1000
+RUNNER_COUNT = 2600
+GREEDY_COUNT = 500
 TASK_COUNT = 100
 ALL_TASKS: list[hct.MultiTask] = []
 CURRENT_TASKS: list[hct.MultiTask] = []
@@ -157,7 +157,7 @@ def predict_with_cost(runners: list[list[int]], cost: list[list[int]], sol_idx: 
     cost_idxs = []
 
     for i in range(len(runners)):
-        padding_count = 2 * RUNNERS_PER_TASK * (MAX_MULTI_TASK_COUNT - i)
+        padding_count = 2 * RUNNERS_PER_TASK * (MAX_MULTI_TASK_COUNT - len(runners) + i)
         # this is probably worth playing around with
         padding_value = 10
 
@@ -170,9 +170,9 @@ def predict_with_cost(runners: list[list[int]], cost: list[list[int]], sol_idx: 
         nn_input = numpy.concatenate((scaled_data, padding), axis=None)
 
         predictions = pygad.nn.predict(last_layer=GANN_instance.population_networks[sol_idx],
-                                       data_inputs=nn_input)
+                                       data_inputs=numpy.array([nn_input]))
         c_idx = predictions[0]
-        STATE[runners[c_idx]] += cost[c_idx]
+        STATE[runners[i][c_idx]] += cost[i][c_idx]
         cost_idxs.append(c_idx)
 
     return cost_idxs
@@ -244,8 +244,8 @@ def callback_generation(ga):
 # how to we convert a task in json format to a Task object
 def converter(json_line) -> hct.MultiTask:
     global RUNNER_COUNT
-    task = hct.Task.from_json(json_line)
-    task.runners = list(map(lambda r: r % RUNNER_COUNT, task.runners))
+    task = hct.MultiTask.from_json(json_line)
+    # task.runners = list(map(lambda r: r % RUNNER_COUNT, task.runners))
     return task
 
 
@@ -257,8 +257,8 @@ if __name__ == "__main__":
     CURRENT_TASKS = sample_n_tasks(TASK_COUNT)
 
     GANN_instance = pygad.gann.GANN(num_solutions=10,
-                                    num_neurons_input=20,
-                                    num_neurons_hidden_layers=[40, 20],
+                                    num_neurons_input=80,
+                                    num_neurons_hidden_layers=[80, 60, 40, 20],
                                     num_neurons_output=10,
                                     hidden_activations="relu",
                                     output_activation="softmax")
