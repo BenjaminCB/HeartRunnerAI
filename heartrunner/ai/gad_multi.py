@@ -91,23 +91,24 @@ def greedy_mip(task_count: int):
     # Worker1 [a.costs, p_costs, a_costs, p_costs ...] --- For each runner
 
     for mt in multitask:
-        # TODO How does update_state_time
+        # TODO How is update_state_time used here, and is it needed?
         update_state_time(mt)
-        num_workers = len(mt.tasks[0].runners)
         num_tasks = len(mt.tasks) * 2
+        # Total amount of runner IDs
+        num_workers = 2000
 
         # insert 0 in 'amount of col' for _ in 'amount of row'
-        costs = [[0] * num_tasks for _ in range(num_workers)]
+        costs = [[10000] * num_tasks for _ in range(num_workers)]
 
         i = 0
         for task in range(0, num_tasks, 2):
-            for runner in range(num_workers):
+            for runner in range(10):
                 costs[runner][task] = mt.tasks[i].a_costs[runner] + STATE[mt.tasks[i].runners[runner]]
                 costs[runner][task + 1] = mt.tasks[i].p_costs[runner] + STATE[mt.tasks[i].runners[runner]]
-                print(runner, task)
-                print(costs[runner][task])
-                print(runner, task + 1)
-                print(costs[runner][task + 1])
+                print('a_cost', mt.tasks[i].runners[runner], task)
+                print(costs[mt.tasks[i].runners[runner]][task])
+                print('p_cost', mt.tasks[i].runners[runner], task + 1)
+                print(costs[mt.tasks[i].runners[runner]][task + 1])
             i += 1
 
         # Solver
@@ -143,23 +144,25 @@ def greedy_mip(task_count: int):
 
         # Solve
         status = solver.Solve()
-
         if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
             print(f'Total cost = {solver.Objective().Value()}\n')
-            # The 'actural' task, that is solved, is 1/2 of the curret task itteration of the matrix 'costs'
-            k = 0
-            for j in range(0, num_tasks, 2):
-                for i in range(num_workers):
+            # i is the 'actural' task, that is solved, 'i' is 1/2 of the current task iteration of the matrix 'costs'
+            i = 0
+            for task in range(0, num_tasks, 2):
+                for runner in range(num_workers):
+                    # runner_id = tasks[i].runners[runner]
                     # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
-                    if x[i, j].solution_value() > 0.5:
-                        STATE[mt.tasks[k].runners[i]] += mt.tasks[k].a_costs[i] + STATE[mt.tasks[k].runners[i]]
-                        print(f'Worker {i} assigned to task {j}.' +
-                              f' A_Cost: {costs[i][j]}')
-                    if x[i, j + 1].solution_value() > 0.5:
-                        STATE[mt.tasks[k].runners[i]] += mt.tasks[k].p_costs[i] + STATE[mt.tasks[k].runners[i]]
-                        print(f'Worker {i} assigned to task {j + 1}.' +
-                              f' P_Cost: {costs[i][j + 1]}')
-            k += 1
+                    if x[runner, task].solution_value() > 0.5:
+                        STATE[runner] += costs[runner][task]
+                        print(f'Worker {runner} assigned to task {task}.' +
+                              f' A_Cost: {costs[runner][task]}')
+                    if x[runner, (task + 1)].solution_value() > 0.5:
+                        STATE[runner] += costs[runner][task]
+                        print(f'Worker {runner} assigned to task {task + 1}.' +
+                              f' P_Cost: {costs[runner][task + 1]}')
+                i += 1
+        else:
+            print('No solution found.')
 
 
 # make a prediction for a single choice such a which runner for the patient

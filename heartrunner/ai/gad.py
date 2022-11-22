@@ -78,11 +78,12 @@ def greedy(task_count: int):
     PREV_TIME = 0
     return end_result
 
-
+# Inputs an amount of task, and finds the best combination is found
 def greedy_mip(task_count: int):
     global STATE, PREV_TIME
-    tasks = sample_n_tasks(2)
-
+    # TODO How is update_state_time used here, and is it needed?
+    tasks = sample_n_tasks(100)
+    t = time()
     # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
     # https://developers.google.com/optimization/assignment/assignment_example
     # Worker1 [a.costs, p_costs, a_costs, p_costs ...] --- For each runner
@@ -90,7 +91,6 @@ def greedy_mip(task_count: int):
     num_tasks = len(tasks) * 2
     # Total amount of runner IDs
     num_workers = 2000
-    print(num_tasks)
 
     # Use dummy value 10.000 for every entry we don't opdate, as 'none' 'null' and 'nothing' creates errors
     costs = [[10000]*num_tasks for _ in range(num_workers)]
@@ -158,16 +158,12 @@ def greedy_mip(task_count: int):
                 # runner_id = tasks[i].runners[runner]
                 # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
                 if x[runner, task].solution_value() > 0.5:
-                    print('nr 1')
-                    STATE[tasks[i].runners[runner]] += tasks[i].a_costs[runner]
-                    # + STATE[tasks[i].runners[runner]]
+                    STATE[runner] += costs[runner][task]
                     print(f'Worker {runner} assigned to task {task}.' +
                           f' A_Cost: {costs[runner][task]}')
                     end_result.append([runner, task])
                 if x[runner, (task+1)].solution_value() > 0.5:
-                    print('nr 2')
-                    STATE[tasks[i].runners[runner]] += tasks[i].p_costs[runner]
-                    # + STATE[tasks[i].runners[runner]]
+                    STATE[runner] += costs[runner][task]
                     print(f'Worker {runner} assigned to task {task+1}.' +
                           f' P_Cost: {costs[runner][task+1]}')
                     end_result.append([runner, task+1])
@@ -175,7 +171,7 @@ def greedy_mip(task_count: int):
             i += 1
     else:
         print('No solution found.')
-
+    print(time() - t)
     return end_result
 
 
