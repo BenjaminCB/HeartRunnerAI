@@ -78,6 +78,7 @@ def greedy(task_count: int):
     PREV_TIME = 0
     return end_result
 
+
 # Inputs an amount of task, and finds the best combination is found
 def greedy_mip(task_count: int):
     global STATE, PREV_TIME
@@ -90,7 +91,7 @@ def greedy_mip(task_count: int):
 
     num_tasks = len(tasks) * 2
     # Total amount of runner IDs
-    num_workers = 2000
+    num_workers = RUNNER_COUNT
 
     # Use dummy value 10.000 for every entry we don't opdate, as 'none' 'null' and 'nothing' creates errors
     costs = [[10000]*num_tasks for _ in range(num_workers)]
@@ -163,7 +164,7 @@ def greedy_mip(task_count: int):
                           f' A_Cost: {costs[runner][task]}')
                     end_result.append([runner, task])
                 if x[runner, (task+1)].solution_value() > 0.5:
-                    STATE[runner] += costs[runner][task]
+                    STATE[runner] += costs[runner][task+1]
                     print(f'Worker {runner} assigned to task {task+1}.' +
                           f' P_Cost: {costs[runner][task+1]}')
                     end_result.append([runner, task+1])
