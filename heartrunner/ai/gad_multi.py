@@ -88,8 +88,9 @@ def greedy(multitasks):
 
                 i += 1
             total_cost += ( task.p_costs[p_idx] + task.a_costs[a_idx] )
-            STATE[task.runners[p_idx]] += task.p_costs[p_idx]
-            STATE[task.runners[a_idx]] += task.a_costs[a_idx]
+            STATE[task.runners[p_idx]] += task.p_costs[p_idx] + 3600
+            STATE[task.runners[a_idx]] += task.a_costs[a_idx] + 3600
+            print(STATE[task.runners[p_idx]] - 3600, STATE[task.runners[a_idx]] - 3600)
         result.append(total_cost)
         PREV_TIME = 0
     return result
@@ -167,20 +168,25 @@ def greedy_mip(multitask):
             result.append(int(solver.Objective().Value()))
             # i is the 'actural' task, that is solved, 'i' is 1/2 of the current task iteration of the matrix 'costs'
             i = 0
+            res = []
             for task in range(0, num_tasks, 2):
                 for runner in range(num_workers):
                     # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
-                    if x[runner, task].solution_value() > 0.5:
+                    if x[runner, task].solution_value() == 1:
                         STATE_mip[runner] += costs[runner][task]
+                        res.append(STATE_mip[runner])
                         # print(f'Worker {runner} assigned to task {task}.' +
                               #f' A_Cost: {costs[runner][task]}')
-                    if x[runner, (task + 1)].solution_value() > 0.5:
+                    if x[runner, (task + 1)].solution_value() == 1:
                         STATE_mip[runner] += costs[runner][task+1]
+                        res.append(STATE_mip[runner])
                         # print(f'Worker {runner} assigned to task {task + 1}.' +
                               #f' P_Cost: {costs[runner][task + 1]}')
                 i += 1
+            print(res)
         else:
             print('No solution found.')
+
     return result
 
 
