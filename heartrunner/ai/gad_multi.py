@@ -70,12 +70,9 @@ def greedy(multitasks):
             min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
             p_idx = 0
             a_idx = 1
-            i = 0
-            j = 0
-            while i < len(task.runners):
-                while j < len(task.runners):
+            for i in range(len(task.runners)):
+                for j in range(len(task.runners)):
                     if i == j:
-                        j += 1
                         continue
 
                     cost = task.p_costs[i] + STATE[task.runners[i]] + task.a_costs[j] + STATE[task.runners[j]]
@@ -84,15 +81,11 @@ def greedy(multitasks):
                         p_idx = i
                         a_idx = j
 
-                    j += 1
-
-                i += 1
             total_cost += ( task.p_costs[p_idx] + task.a_costs[a_idx] )
-            STATE[task.runners[p_idx]] += task.p_costs[p_idx] + 3600
-            STATE[task.runners[a_idx]] += task.a_costs[a_idx] + 3600
-            print(STATE[task.runners[p_idx]] - 3600, STATE[task.runners[a_idx]] - 3600)
+            STATE[task.runners[p_idx]] += task.p_costs[p_idx]
+            STATE[task.runners[a_idx]] += task.a_costs[a_idx]
+            print(STATE[task.runners[p_idx]], STATE[task.runners[a_idx]])
         result.append(total_cost)
-        PREV_TIME = 0
     return result
 
 
@@ -121,14 +114,16 @@ def greedy_mip(multitask):
         i = 0
         for task in range(0, num_tasks, 2):
             for runner in range(10):
-                costs[runner][task] = mt.tasks[i].a_costs[runner] + STATE_mip[mt.tasks[i].runners[runner]]
-                costs[runner][task + 1] = mt.tasks[i].p_costs[runner] + STATE_mip[mt.tasks[i].runners[runner]]
+                runner_id = mt.tasks[i].runners[runner]
+                costs[runner_id][task] = mt.tasks[i].p_costs[runner] + STATE_mip[runner_id]
+                costs[runner_id][task + 1] = mt.tasks[i].a_costs[runner] + STATE_mip[runner_id]
                 # print('a_cost', mt.tasks[i].runners[runner], task)
                 # print(costs[mt.tasks[i].runners[runner]][task])
                 # print('p_cost', mt.tasks[i].runners[runner], task + 1)
                 # print(costs[mt.tasks[i].runners[runner]][task + 1])
             i += 1
-
+        #if len(mt.tasks) > 1:
+        #    print(costs)
         # Solver
         # Create the mip solver with the SCIP backend.
         solver = pywraplp.Solver.CreateSolver('SCIP')
@@ -165,7 +160,7 @@ def greedy_mip(multitask):
         if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
             # print(f'Total cost = {solver.Objective().Value()}\n')
             # Convert to int, to better compare
-            result.append(int(solver.Objective().Value()))
+            result.append((solver.Objective().Value()))
             # i is the 'actural' task, that is solved, 'i' is 1/2 of the current task iteration of the matrix 'costs'
             i = 0
             res = []
@@ -173,12 +168,12 @@ def greedy_mip(multitask):
                 for runner in range(num_workers):
                     # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
                     if x[runner, task].solution_value() == 1:
-                        STATE_mip[runner] += costs[runner][task]
+                        STATE_mip[runner] = costs[runner][task]
                         res.append(STATE_mip[runner])
                         # print(f'Worker {runner} assigned to task {task}.' +
                               #f' A_Cost: {costs[runner][task]}')
                     if x[runner, (task + 1)].solution_value() == 1:
-                        STATE_mip[runner] += costs[runner][task+1]
+                        STATE_mip[runner] = costs[runner][task+1]
                         res.append(STATE_mip[runner])
                         # print(f'Worker {runner} assigned to task {task + 1}.' +
                               #f' P_Cost: {costs[runner][task + 1]}')
