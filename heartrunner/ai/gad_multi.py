@@ -9,8 +9,8 @@ from ortools.linear_solver import pywraplp
 from itertools import permutations, chain
 
 RUNNER_COUNT = 2600
-GREEDY_COUNT = 50
-TASK_COUNT = 50
+GREEDY_COUNT = 1000
+TASK_COUNT = 1000
 ALL_TASKS: list[hct.MultiTask] = []
 CURRENT_TASKS: list[hct.MultiTask] = []
 STATE = numpy.zeros(RUNNER_COUNT)
@@ -58,13 +58,11 @@ def update_state_time_mip(t: hct.MultiTask):
 # fill the STATE by performing n amount of tasks using the greedy algorithm
 def greedy(mt):
     global STATE, PREV_TIME
-    # multitasks = task
-    result = []
-    PREV_TIME = 0
 
-    # multitasks = sample_n_tasks(task_count)
+    PREV_TIME = 0
     total_cost = 0
     update_state_time(mt)
+
     for task in mt.tasks:
         min_cost = task.p_costs[0] + STATE[task.runners[0]] + task.a_costs[1] + STATE[task.runners[1]]
         p_idx = 0
@@ -80,7 +78,7 @@ def greedy(mt):
                     p_idx = i
                     a_idx = j
 
-        total_cost += ( task.p_costs[p_idx] + task.a_costs[a_idx] )
+        total_cost += (task.p_costs[p_idx] + task.a_costs[a_idx])
         STATE[task.runners[p_idx]] += task.p_costs[p_idx]
         STATE[task.runners[a_idx]] += task.a_costs[a_idx]
 
@@ -90,22 +88,18 @@ def greedy(mt):
 # Solve a MultiTask, my use of googles MIP
 def greedy_mip(mt: hct.MultiTask):
     global STATE_mip, PREV_TIME
-    # TODO Have multiple STATE, to compare to the use of greedy
-    # multitask = sample_n_tasks(task_count)
 
+    PREV_TIME = 0
     # The Assignment Problem, where 1 person can take 1 task, and then find the optimal match
     # https://developers.google.com/optimization/assignment/assignment_example
     # Worker1 [a.costs, p_costs, a_costs, p_costs ...] --- For each runner
-    result = []
-    PREV_TIME = 0
 
-    # update_state_time to count in the time difference between the incoming tasks
     update_state_time_mip(mt)
     num_tasks = len(mt.tasks) * 2
     # Total amount of runner IDs
     num_workers = RUNNER_COUNT
 
-    # insert 0 in 'amount of col' for _ in 'amount of row'
+    # insert 10.000 in 'amount of col' for BLANK in 'amount of row'
     costs = [[10000] * num_tasks for _ in range(num_workers)]
 
     i = 0
@@ -114,14 +108,8 @@ def greedy_mip(mt: hct.MultiTask):
             runner_id = mt.tasks[i].runners[runner]
             costs[runner_id][task] = mt.tasks[i].p_costs[runner] + STATE_mip[runner_id]
             costs[runner_id][task + 1] = mt.tasks[i].a_costs[runner] + STATE_mip[runner_id]
-            # print('a_cost', mt.tasks[i].runners[runner], task)
-            # print(costs[mt.tasks[i].runners[runner]][task])
-            # print('p_cost', mt.tasks[i].runners[runner], task + 1)
-            # print(costs[mt.tasks[i].runners[runner]][task + 1])
         i += 1
-    #if len(mt.tasks) > 1:
-    #    print(costs)
-    # Solver
+
     # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('SCIP')
 
@@ -155,26 +143,17 @@ def greedy_mip(mt: hct.MultiTask):
     # Solve
     status = solver.Solve()
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        # print(f'Total cost = {solver.Objective().Value()}\n')
-        # Convert to int, to better compare
-        result.append((solver.Objective().Value()))
-        # i is the 'actural' task, that is solved, 'i' is 1/2 of the current task iteration of the matrix 'costs'
-        i = 0
-        res = []
         for task in range(0, num_tasks, 2):
             for runner in range(num_workers):
                 # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
                 if x[runner, task].solution_value() == 1:
                     STATE_mip[runner] = costs[runner][task]
-                    res.append(STATE_mip[runner])
                     # print(f'Worker {runner} assigned to task {task}.' +
-                            #f' A_Cost: {costs[runner][task]}')
+                            # f' A_Cost: {costs[runner][task]}')
                 if x[runner, (task + 1)].solution_value() == 1:
                     STATE_mip[runner] = costs[runner][task+1]
-                    res.append(STATE_mip[runner])
                     # print(f'Worker {runner} assigned to task {task + 1}.' +
-                            #f' P_Cost: {costs[runner][task + 1]}')
-            i += 1
+                            # f' P_Cost: {costs[runner][task + 1]}')
 
     return round(solver.Objective().Value())
 
@@ -283,14 +262,17 @@ if __name__ == "__main__":
         ALL_TASKS = list(map(converter, json.load(task_file)))
 
     tasks = sample_n_tasks(TASK_COUNT)
+    i = 0
     for task in tasks:
         gre = greedy(task)
         gre_mip = greedy_mip(task)
-        if gre_mip > gre:
-            print(gre, gre_mip)
+        if gre_mip > gre or gre_mip < gre:
+            print('task:', i)
+            print('Greedy: ', gre, 'Greedy_mip: ', gre_mip)
             print(task)
             print(STATE)
             print(STATE_mip)
+        i += 1
 
     breakpoint()
     CURRENT_TASKS = sample_n_tasks(TASK_COUNT)
